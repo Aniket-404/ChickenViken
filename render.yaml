@@ -1,7 +1,7 @@
 services:
   - name: chickenviken-api
     type: web
-    env: node
+    runtime: node
     region: ohio  # Choose a region close to your users
     buildCommand: cd server && npm install
     startCommand: cd server && npm run start
