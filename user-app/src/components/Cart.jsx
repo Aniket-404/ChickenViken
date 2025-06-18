@@ -72,7 +72,6 @@ const Cart = () => {
           onClick={clearCart}
           className="text-red-600 hover:text-red-800 flex items-center"
         >
-          <span className="material-icons mr-1">delete</span>
           Clear Cart
         </button>
       </div>
