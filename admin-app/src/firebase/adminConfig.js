@@ -1,11 +1,10 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// Firebase configuration
-const firebaseConfig = {
+// Admin Firebase configuration
+const adminFirebaseConfig = {
   apiKey: import.meta.env.VITE_ADMIN_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_ADMIN_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_ADMIN_FIREBASE_PROJECT_ID,
@@ -15,17 +14,26 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_ADMIN_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Admin Firebase
+const app = initializeApp(adminFirebaseConfig);
 
-// Initialize Auth
+// Initialize Admin services
 const auth = getAuth(app);
+auth.useDeviceLanguage();
 
-// Initialize Firestore
+// Initialize Admin Firestore
 const db = getFirestore(app);
 
-// Initialize Storage
+// Initialize Admin Storage
 const storage = getStorage(app);
 
-export { auth, db, storage };
+// Export with both original names and admin-prefixed names for flexibility
+export { 
+  auth, 
+  db, 
+  storage,
+  auth as adminAuth, 
+  db as adminDb, 
+  storage as adminStorage 
+};
 export default app;

@@ -1,64 +1,44 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AdminAuthProvider } from './contexts/AdminAuthContext';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext/index.js';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import DashboardLayout from './components/layout/DashboardLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 
-// Import admin components and pages
-import AdminLogin from './pages/AdminLogin';
-import DashboardComponent from './components/DashboardComponent.jsx';
-import AdminCreationComponent from './pages/AdminCreationComponent.jsx';
+// Auth pages
+import AdminLogin from './pages/auth/AdminLogin';
 
-// Protected route component for admin
-const AdminProtectedRoute = ({ children }) => {
-  // Check if there's an admin user in localStorage
-  const isAdminAuthenticated = localStorage.getItem('adminUser') !== null;
-  console.log('AdminProtectedRoute - Authentication status:', isAdminAuthenticated);
-  
-  // If there's a Firebase user in localStorage, consider them authenticated
-  return isAdminAuthenticated ? children : <Navigate to="/login" />;
-};
+// Dashboard pages
+import Dashboard from './pages/dashboard/Dashboard';
+import Orders from './pages/orders/Orders';
+import Products from './pages/products/Products';
+import Inventory from './pages/inventory/Inventory';
+import Users from './pages/users/Users';
+import Settings from './pages/settings/Settings';
 
 function App() {
   return (
     <ErrorBoundary>
-      <Router>
-        <AdminAuthProvider>
-          <div className="min-h-screen bg-gray-100">
-            <Routes>
-            <Route path="/login" element={<AdminLogin />} />            <Route 
-              path="/" 
-              element={
-                <AdminProtectedRoute>
-                  <DashboardComponent />
-                </AdminProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/orders" 
-              element={
-                <AdminProtectedRoute>
-                  <div>Orders Management (To be created)</div>
-                </AdminProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/products" 
-              element={
-                <AdminProtectedRoute>
-                  <div>Products Management (To be created)</div>
-                </AdminProtectedRoute>
-              } 
-            />            <Route 
-              path="/admins" 
-              element={
-                <AdminProtectedRoute>
-                  <AdminCreationComponent />
-                </AdminProtectedRoute>
-              } 
-            /><Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </div>
-        </AdminAuthProvider>
-      </Router>
+      <AuthProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<AdminLogin />} />
+          
+          {/* Protected routes - all need admin authentication */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/orders" element={<Orders />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/users" element={<Users />} />
+              <Route path="/settings" element={<Settings />} />
+            </Route>
+          </Route>
+          
+          {/* Fallback route */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }
