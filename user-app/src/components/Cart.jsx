@@ -1,4 +1,4 @@
-import { useCart } from '../hooks/useCart';
+import { useCart } from '../contexts/CartContext/hooks';
 import { Link } from 'react-router-dom';
 
 const CartItem = ({ item }) => {

@@ -1,65 +1,116 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase/config';
-import ProductGrid from '../components/ProductGrid';
+import { fetchProducts, fetchCategories } from '../services/products';
+import ProductCard from '../components/ProductCard';
+import { useCart } from '../contexts/CartContext/hooks';
 
 const Products = () => {
+  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { addToCart } = useCart();
+
   useEffect(() => {
-    const fetchCategories = async () => {
+    const loadData = async () => {
       try {
-        const categoriesCollection = collection(db, 'categories');
-        const categoriesSnapshot = await getDocs(categoriesCollection);
-        const categoriesList = categoriesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        setCategories(categoriesList);
-        setLoading(false);
+        setLoading(true);
+        setError(null);
+
+        // Fetch categories first
+        const categoriesData = await fetchCategories();
+        setCategories(categoriesData);
+
+        // Fetch products based on selected category
+        const productsData = await fetchProducts(selectedCategory === 'all' ? null : selectedCategory);
+        setProducts(productsData);
       } catch (err) {
-        console.error('Error fetching categories:', err);
+        console.error('Error loading data:', err);
+        setError('Failed to load products. Please try again later.');
+      } finally {
         setLoading(false);
       }
     };
-    
-    fetchCategories();
-  }, []);
-  
+
+    loadData();
+  }, [selectedCategory]);
+
+  const handleAddToCart = (product) => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      imageUrl: product.imageUrl,
+      quantity: 1
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <div className="bg-red-50 text-red-600 p-4 rounded-md inline-block">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-center">Our Fresh Chicken Products</h1>
-        {/* Category Filter */}
+      
+      {/* Category Filter */}
       <div className="flex flex-wrap justify-center gap-4 mb-8">
         <button
           onClick={() => setSelectedCategory('all')}
           className={`px-4 py-2 rounded-full ${
-            selectedCategory === 'all' 
-              ? 'bg-red-600 text-white' 
+            selectedCategory === 'all'
+              ? 'bg-red-600 text-white'
               : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
           }`}
         >
           All Products
         </button>
-          {categories.map(category => (
+        {categories.map(category => (
           <button
-            key={category.id}
-            onClick={() => setSelectedCategory(category.id)}
+            key={category}
+            onClick={() => setSelectedCategory(category)}
             className={`px-4 py-2 rounded-full ${
-              selectedCategory === category.id 
-                ? 'bg-red-600 text-white' 
+              selectedCategory === category
+                ? 'bg-red-600 text-white'
                 : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
             }`}
           >
-            {category.name}
+            {category}
           </button>
         ))}
       </div>
-      
+
       {/* Products Grid */}
-      <ProductGrid categoryId={selectedCategory === 'all' ? null : selectedCategory} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {products.map(product => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            onAddToCart={handleAddToCart}
+          />
+        ))}
+      </div>
+
+      {/* No Products Message */}
+      {products.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">No products available in this category.</p>
+        </div>
+      )}
     </div>
   );
 };

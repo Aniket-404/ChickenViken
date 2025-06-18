@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { CartContext } from './CartContextInit';
+import PropTypes from 'prop-types';
+import { CartContext } from './context';
 
 export function CartProvider({ children }) {
   const [cartItems, setCartItems] = useState([]);
@@ -85,3 +86,7 @@ export function CartProvider({ children }) {
     </CartContext.Provider>
   );
 }
+
+CartProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};

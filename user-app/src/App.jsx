@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { CartProvider } from './contexts/CartContext';
+import { CartProvider } from './contexts/CartContext/provider';
 import { useAuth } from './hooks/useAuth';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';

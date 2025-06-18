@@ -12,6 +12,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "deploy:rules": "npx firebase deploy --only firestore:rules",
     "check-admins": "node ../scripts/adminCheck.js",
     "create-admin": "node ../scripts/createAdminUser.js",
     "test-login": "node ../scripts/testAdminLogin.js",

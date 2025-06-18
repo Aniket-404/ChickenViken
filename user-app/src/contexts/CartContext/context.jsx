@@ -1,6 +1,6 @@
 import { createContext } from 'react';
 
-// Create the Cart context with default values
+// Create cart context with default values
 export const CartContext = createContext({
   cartItems: [],
   total: 0,
@@ -8,4 +8,5 @@ export const CartContext = createContext({
   updateQuantity: () => {},
   removeFromCart: () => {},
   clearCart: () => {},
+  itemCount: 0,
 });
