@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../../firebase/config';
+import { formatCurrency, parseAmount } from '../../utils/currency';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -69,6 +70,18 @@ const Products = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size should be less than 5MB');
+        return;
+      }
+
+      // Check file type
+      if (!file.type.match('image.*')) {
+        setError('Please select an image file');
+        return;
+      }
+
       setImageFile(file);
       
       // Create a preview
@@ -134,25 +147,39 @@ const Products = () => {
       
       // If there's a new image file, upload it
       if (imageFile) {
-        const storageRef = ref(storage, `products/${Date.now()}_${imageFile.name}`);
-        await uploadBytes(storageRef, imageFile);
-        imageUrl = await getDownloadURL(storageRef);
-        
-        // If updating and there was a previous image, delete it
-        if (currentProduct?.imageUrl) {
-          try {
-            const oldImageRef = ref(storage, currentProduct.imageUrl);
-            await deleteObject(oldImageRef);
-          } catch (err) {
-            console.warn('Could not delete old image:', err);
+        try {
+          // Create a clean filename
+          const cleanFileName = imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const storageRef = ref(storage, `products/${Date.now()}_${cleanFileName}`);
+          
+          // Upload the file
+          const snapshot = await uploadBytes(storageRef, imageFile);
+          
+          // Get the download URL
+          imageUrl = await getDownloadURL(snapshot.ref);
+          
+          // If updating and there was a previous image, delete it
+          if (currentProduct?.imageUrl) {
+            try {
+              // Extract the old file path from the URL
+              const oldImagePath = currentProduct.imageUrl.split('/o/')[1].split('?')[0];
+              const decodedPath = decodeURIComponent(oldImagePath);
+              const oldImageRef = ref(storage, decodedPath);
+              await deleteObject(oldImageRef);
+            } catch (err) {
+              console.warn('Could not delete old image:', err);
+            }
           }
+        } catch (uploadError) {
+          console.error('Error uploading image:', uploadError);
+          throw new Error('Failed to upload image. Please try again.');
         }
       }
       
       const productData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        price: parseFloat(formData.price),
+        price: parseAmount(formData.price),
         category: formData.category.trim(),
         imageUrl,
         inStock: formData.inStock,
@@ -283,7 +310,7 @@ const Products = () => {
                 <h3 className="text-lg font-medium text-gray-900 truncate">{product.name}</h3>
                 <p className="text-sm text-gray-500 mt-1 line-clamp-2">{product.description}</p>
                 <div className="mt-2 flex justify-between items-center">
-                  <span className="text-lg font-bold text-gray-900">${product.price?.toFixed(2)}</span>
+                  <span className="text-lg font-bold text-gray-900">{formatCurrency(product.price)}</span>
                   <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
                     {product.category || 'Uncategorized'}
                   </span>
@@ -363,14 +390,13 @@ const Products = () => {
                   <div className="md:col-span-2">
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                       Product Name*
-                    </label>
-                    <input
+                    </label>                    <input
                       type="text"
                       id="name"
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-300 placeholder-gray-500"
                       required
                     />
                   </div>
@@ -378,14 +404,13 @@ const Products = () => {
                   <div className="md:col-span-2">
                     <label htmlFor="description" className="block text-sm font-medium text-gray-700">
                       Description
-                    </label>
-                    <textarea
+                    </label>                    <textarea
                       id="description"
                       name="description"
                       rows="3"
                       value={formData.description}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-300 placeholder-gray-500"
                     ></textarea>
                   </div>
                   
@@ -393,9 +418,8 @@ const Products = () => {
                     <label htmlFor="price" className="block text-sm font-medium text-gray-700">
                       Price*
                     </label>
-                    <div className="mt-1 relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 sm:text-sm">$</span>
+                    <div className="mt-1 relative rounded-md shadow-sm">                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="text-gray-500 dark:text-gray-400 sm:text-sm">₹</span>
                       </div>
                       <input
                         type="number"
@@ -403,7 +427,7 @@ const Products = () => {
                         name="price"
                         value={formData.price}
                         onChange={handleInputChange}
-                        className="block w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="block w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-300 placeholder-gray-500"
                         placeholder="0.00"
                         step="0.01"
                         min="0"
@@ -422,7 +446,7 @@ const Products = () => {
                       name="category"
                       value={formData.category}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-300 placeholder-gray-500"
                     />
                   </div>
                   
@@ -450,7 +474,7 @@ const Products = () => {
                         name="image"
                         accept="image/*"
                         onChange={handleImageChange}
-                        className="ml-4"
+                        className="ml-4 text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-100"
                       />
                     </div>
                   </div>
@@ -464,8 +488,7 @@ const Products = () => {
                         checked={formData.inStock}
                         onChange={handleInputChange}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="inStock" className="ml-2 block text-sm text-gray-900">
+                      />                      <label htmlFor="inStock" className="ml-2 block text-sm text-gray-900 dark:text-gray-100">
                         In Stock
                       </label>
                     </div>
