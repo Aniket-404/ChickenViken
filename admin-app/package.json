@@ -18,6 +18,8 @@
     "fix-admin-login": "node ../scripts/fixAdminLogin.js"
   },
   "dependencies": {
+    "@cloudinary/react": "^1.14.3",
+    "@cloudinary/url-gen": "^1.21.0",
     "autoprefixer": "^10.4.17",
     "firebase": "^11.9.1",
     "postcss": "^8.4.35",

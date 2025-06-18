@@ -10,8 +10,8 @@ import {
   query,
   orderBy 
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '../../firebase/config';
+import { db } from '../../firebase/config';
+import { uploadImage, deleteImage, getPublicIdFromUrl } from '../../services/cloudinary';
 import { formatCurrency, parseAmount } from '../../utils/currency';
 
 const Products = () => {
@@ -144,28 +144,19 @@ const Products = () => {
       }
       
       let imageUrl = formData.imageUrl;
-      
-      // If there's a new image file, upload it
+        // If there's a new image file, upload it to Cloudinary
       if (imageFile) {
         try {
-          // Create a clean filename
-          const cleanFileName = imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-          const storageRef = ref(storage, `products/${Date.now()}_${cleanFileName}`);
+          // Upload the file to Cloudinary
+          imageUrl = await uploadImage(imageFile);
           
-          // Upload the file
-          const snapshot = await uploadBytes(storageRef, imageFile);
-          
-          // Get the download URL
-          imageUrl = await getDownloadURL(snapshot.ref);
-          
-          // If updating and there was a previous image, delete it
+          // If updating and there was a previous image, delete it from Cloudinary
           if (currentProduct?.imageUrl) {
             try {
-              // Extract the old file path from the URL
-              const oldImagePath = currentProduct.imageUrl.split('/o/')[1].split('?')[0];
-              const decodedPath = decodeURIComponent(oldImagePath);
-              const oldImageRef = ref(storage, decodedPath);
-              await deleteObject(oldImageRef);
+              const oldPublicId = getPublicIdFromUrl(currentProduct.imageUrl);
+              if (oldPublicId) {
+                await deleteImage(oldPublicId);
+              }
             } catch (err) {
               console.warn('Could not delete old image:', err);
             }
@@ -233,12 +224,13 @@ const Products = () => {
     if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
       try {
         await deleteDoc(doc(db, 'products', productId));
-        
-        // Delete image from storage if it exists
+          // Delete image from Cloudinary if it exists
         if (imageUrl) {
           try {
-            const imageRef = ref(storage, imageUrl);
-            await deleteObject(imageRef);
+            const publicId = getPublicIdFromUrl(imageUrl);
+            if (publicId) {
+              await deleteImage(publicId);
+            }
           } catch (err) {
             console.warn('Could not delete image:', err);
           }
