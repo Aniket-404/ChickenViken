@@ -10,12 +10,17 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   
   const { register, handleSubmit, formState: { errors } } = useForm();
-  
-  const onSubmit = async (data) => {
+    const onSubmit = async (data) => {
+    if (loading) return; // Prevent multiple submissions
+    
     try {
       setError('');
       setLoading(true);
       await login(data.email, data.password);
+      
+      // Set localStorage item to indicate successful login
+      localStorage.setItem('user', JSON.stringify({ email: data.email }));
+      
       navigate('/');
     } catch (err) {
       setError('Failed to sign in. Please check your credentials.');
@@ -24,12 +29,9 @@ const Login = () => {
       setLoading(false);
     }
   };
-  
-  return (
+    return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+      <div 
         className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-md"
       >
         <div>
@@ -99,10 +101,9 @@ const Login = () => {
             <span className="text-gray-600">Don't have an account? </span>
             <Link to="/signup" className="font-medium text-red-600 hover:text-red-500">
               Sign up
-            </Link>
-          </div>
+            </Link>          </div>
         </form>
-      </motion.div>
+      </div>
     </div>
   );
 };

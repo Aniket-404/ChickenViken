@@ -6,11 +6,13 @@ const CartItem = ({ item }) => {
   
   return (
     <div className="flex items-center justify-between p-4 border-b">
-      <div className="flex items-center">
-        <img 
-          src={item.image} 
+      <div className="flex items-center">        <img 
+          src={item.image || 'https://via.placeholder.com/150'} 
           alt={item.name} 
           className="w-16 h-16 object-cover rounded"
+          onError={(e) => {
+            e.target.src = 'https://via.placeholder.com/150';
+          }}
         />
         <div className="ml-4">
           <h3 className="font-medium">{item.name}</h3>
@@ -34,13 +36,14 @@ const CartItem = ({ item }) => {
             +
           </button>
         </div>
-        
-        <p className="font-semibold w-20 text-right">₹{(item.price * item.quantity).toFixed(2)}</p>
+          <p className="font-semibold w-20 text-right">₹{(item.price * item.quantity).toFixed(2)}</p>
           <button 
           onClick={() => removeFromCart(item.id)}
           className="ml-4 text-red-600 hover:text-red-800"
         >
-          <span className="material-icons">delete</span>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
         </button>
       </div>
     </div>

@@ -3,16 +3,23 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "exports": {
+    "./components/Sidebar": "./src/components/Sidebar.jsx",
+    "./components/Dashboard": "./src/components/Dashboard.jsx"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check-admins": "node ../scripts/adminCheck.js",
+    "create-admin": "node ../scripts/createAdminUser.js",
+    "test-login": "node ../scripts/testAdminLogin.js",
+    "fix-admin-login": "node ../scripts/fixAdminLogin.js"
   },
   "dependencies": {
     "autoprefixer": "^10.4.17",
     "firebase": "^11.9.1",
-    "framer-motion": "^12.18.1",
     "postcss": "^8.4.35",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

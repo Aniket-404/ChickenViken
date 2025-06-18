@@ -1,16 +1,20 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
+import { useAuth } from './hooks/useAuth';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Products from './pages/Products';
 import Checkout from './pages/Checkout';
 import Cart from './components/Cart';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = localStorage.getItem('user') !== null;
+  const { currentUser } = useAuth();
+  const isAuthenticated = currentUser || localStorage.getItem('user') !== null;
+  
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
@@ -20,25 +24,27 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-grow">
-              <Routes>
-                <Route path="/" element={<Products />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route 
-                  path="/checkout" 
-                  element={
-                    <ProtectedRoute>
-                      <Checkout />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </main>
+            <ErrorBoundary>
+              <Navbar />
+              <main className="flex-grow">
+                <Routes>
+                  <Route path="/" element={<Products />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route 
+                    path="/checkout" 
+                    element={
+                      <ProtectedRoute>
+                        <Checkout />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+              </main>
+            </ErrorBoundary>
             <footer className="bg-gray-800 text-white py-8">
               <div className="container mx-auto px-4">
                 <div className="flex flex-col md:flex-row justify-between">

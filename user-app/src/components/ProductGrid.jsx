@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useCart } from '../hooks/useCart';
 
+// ProductCard component doesn't need motion import since we're using standard divs
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
@@ -19,12 +20,8 @@ const ProductCard = ({ product }) => {
     // Reset quantity after adding to cart
     setQuantity(1);
   };
-
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+    <div 
       className="card"
     >
       <img 
@@ -53,8 +50,7 @@ const ProductCard = ({ product }) => {
               +
             </button>
           </div>
-          
-          <button 
+            <button 
             onClick={handleAddToCart}
             className="btn-primary"
           >
@@ -62,11 +58,11 @@ const ProductCard = ({ product }) => {
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
-const ProductGrid = () => {
+const ProductGrid = ({ categoryId }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -74,8 +70,21 @@ const ProductGrid = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const productsCollection = collection(db, 'products');
-        const productsSnapshot = await getDocs(productsCollection);
+        setLoading(true);
+        let productsQuery;
+        
+        if (categoryId) {
+          // If a category is selected, filter products by category
+          productsQuery = query(
+            collection(db, 'products'),
+            where('categoryId', '==', categoryId)
+          );
+        } else {
+          // If no category is selected, get all products
+          productsQuery = collection(db, 'products');
+        }
+        
+        const productsSnapshot = await getDocs(productsQuery);
         const productsList = productsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -91,7 +100,7 @@ const ProductGrid = () => {
     };
     
     fetchProducts();
-  }, []);
+  }, [categoryId]);
   
   if (loading) {
     return (

@@ -14,27 +14,38 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
   async function signup(email, password, name, phone) {
     try {
       setError('');
+      // First create the user account
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
-      // Update user profile with name
-      await updateProfile(userCredential.user, {
-        displayName: name
-      });
+      try {
+        // Update user profile with name
+        await updateProfile(userCredential.user, {
+          displayName: name
+        });
+      } catch (profileErr) {
+        console.error("Error updating profile:", profileErr);
+        // Continue even if profile update fails
+      }
       
-      // Store additional user data in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        name,
-        phone,
-        email,
-        createdAt: new Date().toISOString()
-      });
+      try {
+        // Store additional user data in Firestore
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          name,
+          phone,
+          email,
+          createdAt: new Date().toISOString()
+        });
+      } catch (dbErr) {
+        console.error("Error storing user data:", dbErr);
+        // Continue even if storing data fails
+      }
       
       return userCredential.user;
     } catch (err) {
+      console.error("Signup error:", err);
       setError(err.message);
       throw err;
     }

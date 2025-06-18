@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // TEMPORARY TEST RULES - REPLACE WITH SECURE RULES BEFORE PRODUCTION
+    // This will allow any read/write during development and debugging
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Original rules below - uncomment after fixing the issue
+    /*
+    // Function to check if user is an admin
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    // Admin collection - only admins can read, only the specific admin can write
+    match /admins/{adminId} {
+      allow read: if request.auth != null; 
+      allow write: if request.auth.uid == adminId && isAdmin();
+    }
+    
+    // Users collection - users can read/write their own data, admins can read/write all
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || isAdmin();
+      allow write: if request.auth.uid == userId || isAdmin();
+    }
+    
+    // Products collection - everyone can read, only admins can write
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Orders collection - users can read/write their own orders, admins can read/write all
+    match /orders/{orderId} {
+      allow read: if resource.data.userId == request.auth.uid || isAdmin();
+      allow create: if request.resource.data.userId == request.auth.uid || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+    
+    // Inventory collection - only admins can access
+    match /inventory/{itemId} {
+      allow read, write: if isAdmin();
+    }
+    */
+  }
+}

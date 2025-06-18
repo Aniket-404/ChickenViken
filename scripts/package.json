@@ -1,0 +1,9 @@
+{
+  "name": "chickenviken-scripts",
+  "version": "1.0.0",
+  "description": "Utility scripts for ChickenViken",
+  "type": "module",
+  "dependencies": {
+    "firebase": "^11.9.1"
+  }
+}

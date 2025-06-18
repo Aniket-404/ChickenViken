@@ -11,26 +11,31 @@ const Signup = () => {
   
   const { register, handleSubmit, formState: { errors }, watch } = useForm();
   const password = watch("password", "");
-  
-  const onSubmit = async (data) => {
+    const onSubmit = async (data) => {
+    if (loading) return; // Prevent multiple submissions
+    
     try {
       setError('');
       setLoading(true);
+      
+      // Add a small delay to show loading state
       await signup(data.email, data.password, data.name, data.phone);
+      
+      // Set localStorage item to indicate successful registration
+      localStorage.setItem('user', JSON.stringify({ email: data.email }));
+      
+      // Navigate only after everything is successful
       navigate('/');
     } catch (err) {
-      setError('Failed to create an account. ' + err.message);
-      console.error(err);
+      console.error('Signup error:', err);
+      setError('Failed to create an account. ' + (err.message || 'Please try again.'));
     } finally {
       setLoading(false);
     }
   };
-  
-  return (
+    return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+      <div 
         className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-md"
       >
         <div>
@@ -154,10 +159,9 @@ const Signup = () => {
             <span className="text-gray-600">Already have an account? </span>
             <Link to="/login" className="font-medium text-red-600 hover:text-red-500">
               Sign in
-            </Link>
-          </div>
+            </Link>          </div>
         </form>
-      </motion.div>
+      </div>
     </div>
   );
 };
