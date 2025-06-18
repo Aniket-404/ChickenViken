@@ -1,0 +1,32 @@
+{
+  "name": "chickenviken",
+  "version": "1.0.0",
+  "description": "A raw chicken meat delivery platform with user and admin apps",  "scripts": {
+    "install:all": "npm run install:user && npm run install:admin && npm run install:server",
+    "install:user": "cd user-app && npm install",
+    "install:admin": "cd admin-app && npm install",
+    "install:server": "cd server && npm install",
+    "dev:user": "cd user-app && npm run dev",
+    "dev:admin": "cd admin-app && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "build:user": "cd user-app && npm run build",
+    "build:admin": "cd admin-app && npm run build",
+    "build:all": "npm run build:user && npm run build:admin",
+    "preview:user": "cd user-app && npm run preview",
+    "preview:admin": "cd admin-app && npm run preview",
+    "lint:user": "cd user-app && npm run lint",
+    "lint:admin": "cd admin-app && npm run lint",
+    "deploy:firebase": "npm run build:all && firebase deploy",
+    "deploy:user": "npm run build:user && firebase deploy --only hosting:user",
+    "deploy:admin": "npm run build:admin && firebase deploy --only hosting:admin"
+  },
+  "keywords": [
+    "react",
+    "vite",
+    "firebase",
+    "express",
+    "food-delivery"
+  ],
+  "author": "",
+  "license": "MIT"
+}

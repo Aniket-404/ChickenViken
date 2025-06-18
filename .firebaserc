@@ -1,0 +1,17 @@
+{
+  "projects": {
+    "default": "chickenviken-30bd9"
+  },
+  "targets": {
+    "chickenviken-30bd9": {
+      "hosting": {
+        "user": [
+          "chickenviken-user"
+        ],
+        "admin": [
+          "chickenviken-admin"
+        ]
+      }
+    }
+  }
+}
