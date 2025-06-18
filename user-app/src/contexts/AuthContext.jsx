@@ -6,15 +6,13 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase/config';
+import { auth } from '../firebase/config';
 import { AuthContext } from './AuthContextInit';
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  async function signup(email, password, name, phone) {
+  const [error, setError] = useState('');  async function signup(email, password, name, phone) {
     try {
       setError('');
       // First create the user account
@@ -31,8 +29,9 @@ export function AuthProvider({ children }) {
       }
       
       try {
-        // Store additional user data in Firestore
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
+        // Store additional user data in Firestore using our user service
+        const { createUser } = await import('../services/users');
+        await createUser(userCredential.user.uid, {
           name,
           phone,
           email,
@@ -71,17 +70,13 @@ export function AuthProvider({ children }) {
       throw err;
     }
   }
-
   async function getUserData() {
     if (!currentUser) return null;
     
     try {
-      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-      if (userDoc.exists()) {
-        return userDoc.data();
-      } else {
-        return null;
-      }
+      // Use our user service
+      const { fetchUserData } = await import('../services/users');
+      return await fetchUserData(currentUser.uid);
     } catch (err) {
       setError(err.message);
       return null;

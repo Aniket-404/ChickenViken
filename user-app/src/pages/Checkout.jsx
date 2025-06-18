@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../contexts/CartContext/hooks';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase/config';
 import { useForm } from 'react-hook-form';
 
 const Checkout = () => {
@@ -16,6 +14,7 @@ const Checkout = () => {
   const [addingNewAddress, setAddingNewAddress] = useState(false);
   const [paymentStep, setPaymentStep] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
   
   const { register, handleSubmit, formState: { errors } } = useForm();
   
@@ -25,19 +24,18 @@ const Checkout = () => {
       navigate('/products');
     }
   }, [cartItems, navigate]);
-  
-  // Fetch user addresses
+    // Fetch user addresses
   useEffect(() => {
     const fetchAddresses = async () => {
       if (currentUser) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-          const userData = userDoc.data();
+          const { fetchUserAddresses } = await import('../services/users');
+          const userAddresses = await fetchUserAddresses(currentUser.uid);
           
-          if (userData && userData.addresses) {
-            setAddresses(userData.addresses);
-            if (userData.addresses.length > 0) {
-              setSelectedAddress(userData.addresses[0].id);
+          if (userAddresses && userAddresses.length > 0) {
+            setAddresses(userAddresses);
+            if (userAddresses.length > 0) {
+              setSelectedAddress(userAddresses[0].id);
             }
           }
         } catch (err) {
@@ -70,7 +68,6 @@ const Checkout = () => {
   const getSelectedAddressDetails = () => {
     return addresses.find(addr => addr.id === selectedAddress);
   };
-  
   const handlePayment = async () => {
     setLoading(true);
     
@@ -78,26 +75,31 @@ const Checkout = () => {
       // In Phase 1, this is just a mock payment process
       // In Phase 2, this would integrate with a real payment gateway
       
-      // Create the order in Firestore
-      const orderData = {
-        userId: currentUser.uid,
-        items: cartItems,
-        totalAmount: total,
-        address: getSelectedAddressDetails(),
-        status: 'pending',
-        paymentStatus: 'paid', // In a real app, this would be set based on payment gateway response
-        createdAt: serverTimestamp()
-      };
+      // Get the selected address details
+      const selectedAddressDetails = getSelectedAddressDetails();
+      if (!selectedAddressDetails) {
+        setErrorMessage('Please select a valid delivery address');
+        setLoading(false);
+        return;
+      }
       
-      const orderRef = await addDoc(collection(db, 'orders'), orderData);
+      // Create the order using our orders service
+      const { createOrder } = await import('../services/orders');
+      const orderId = await createOrder(
+        currentUser.uid,
+        cartItems,
+        total,
+        selectedAddressDetails,
+        'UPI' // For now, hardcoding UPI as payment method
+      );
       
       // Clear the cart
       clearCart();
       
       // Navigate to success page
-      navigate(`/order-success/${orderRef.id}`);
-    } catch (err) {
+      navigate(`/order-success/${orderId}`);    } catch (err) {
       console.error('Error processing order:', err);
+      setErrorMessage('Failed to process your order. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -189,6 +191,12 @@ const Checkout = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-semibold mb-8">Checkout</h1>
+      
+      {errorMessage && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {errorMessage}
+        </div>
+      )}
       
       <div className="flex flex-col md:flex-row gap-8">
         <div className="md:w-2/3">

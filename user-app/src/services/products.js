@@ -1,15 +1,15 @@
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { adminDb } from '../firebase/config';
 
 /**
- * Fetches all products from Firestore
+ * Fetches all products from the Admin Firestore
  * @param {string} category - Optional category to filter by
  * @returns {Promise<Array>} Array of products
  */
 export const fetchProducts = async (category = null) => {
   try {
     // Get all products and filter in memory to avoid complex indexes
-    const snapshot = await getDocs(collection(db, 'products'));
+    const snapshot = await getDocs(collection(adminDb, 'products'));
     
     // Process and filter products
     let products = snapshot.docs.map(doc => ({
@@ -34,13 +34,13 @@ export const fetchProducts = async (category = null) => {
 };
 
 /**
- * Fetches all categories from Firestore
+ * Fetches all categories from the Admin Firestore
  * @returns {Promise<Array>} Array of categories
  */
 export const fetchCategories = async () => {
   try {
     // Get all products
-    const snapshot = await getDocs(collection(db, 'products'));
+    const snapshot = await getDocs(collection(adminDb, 'products'));
     
     // Extract unique categories from in-stock products
     const categories = new Set();

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { adminDb } from '../firebase/config';
 import { useCart } from '../contexts/CartContext/hooks';
 
 // ProductCard component doesn't need motion import since we're using standard divs
@@ -72,16 +72,15 @@ const ProductGrid = ({ categoryId }) => {
       try {
         setLoading(true);
         let productsQuery;
-        
-        if (categoryId) {
+          if (categoryId) {
           // If a category is selected, filter products by category
           productsQuery = query(
-            collection(db, 'products'),
+            collection(adminDb, 'products'),
             where('categoryId', '==', categoryId)
           );
         } else {
           // If no category is selected, get all products
-          productsQuery = collection(db, 'products');
+          productsQuery = collection(adminDb, 'products');
         }
         
         const productsSnapshot = await getDocs(productsQuery);
