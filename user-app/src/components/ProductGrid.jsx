@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { useCart } from '../contexts/CartContext';
+import { useCart } from '../contexts/CartContext/hooks';
 
 // ProductCard component doesn't need motion import since we're using standard divs
 const ProductCard = ({ product }) => {

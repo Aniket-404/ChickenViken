@@ -7,7 +7,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Products from './pages/Products';
 import Checkout from './pages/Checkout';
-import Cart from './components/Cart';
+import CartPage from './pages/CartPage';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Protected route component
@@ -32,7 +32,7 @@ function App() {
                   <Route path="/products" element={<Products />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
-                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/cart" element={<CartPage />} />
                   <Route 
                     path="/checkout" 
                     element={

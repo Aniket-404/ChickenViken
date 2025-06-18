@@ -1,22 +1,21 @@
 import { useCart } from '../contexts/CartContext/hooks';
 import { Link } from 'react-router-dom';
+import { formatCurrency } from '../utils/currency';
 
 const CartItem = ({ item }) => {
   const { updateQuantity, removeFromCart } = useCart();
   
   return (
-    <div className="flex items-center justify-between p-4 border-b">
-      <div className="flex items-center">        <img 
-          src={item.image || 'https://via.placeholder.com/150'} 
+    <div className="flex items-center justify-between p-4 border-b">      <div className="flex items-center">        <img 
+          src={item.imageUrl || item.image || 'https://via.placeholder.com/150'} 
           alt={item.name} 
           className="w-16 h-16 object-cover rounded"
           onError={(e) => {
             e.target.src = 'https://via.placeholder.com/150';
           }}
         />
-        <div className="ml-4">
-          <h3 className="font-medium">{item.name}</h3>
-          <p className="text-gray-600 text-sm">₹{item.price.toFixed(2)}</p>
+        <div className="ml-4">          <h3 className="font-medium">{item.name}</h3>
+          <p className="text-gray-600 text-sm">{formatCurrency(item.price)}</p>
         </div>
       </div>
       
@@ -88,10 +87,9 @@ const Cart = () => {
             <CartItem key={item.id} item={item} />
           ))}
         </div>
-        
-        <div className="p-4 bg-gray-50 flex justify-between items-center">
+          <div className="p-4 bg-gray-50 flex justify-between items-center">
           <span className="font-semibold">Total</span>
-          <span className="font-bold text-xl">₹{total.toFixed(2)}</span>
+          <span className="font-bold text-xl">{formatCurrency(total)}</span>
         </div>
       </div>
       

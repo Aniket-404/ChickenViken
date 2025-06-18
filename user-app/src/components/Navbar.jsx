@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useCart } from '../contexts/CartContext';
+import { useCart } from '../contexts/CartContext/hooks';
 
 // Icons for cart and menu
 const CartIcon = () => (
