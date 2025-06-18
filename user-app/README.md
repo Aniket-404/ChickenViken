@@ -40,6 +40,33 @@ The Firebase security rules in `firestore.rules` enforce the following permissio
 - Users can only create/read orders they own
 - Products are read-only
 
+### Deploying Security Rules
+
+To deploy the security rules to your Firebase project:
+
+1. **Using Firebase CLI** (recommended):
+   ```
+   firebase login
+   firebase use chickenviken-30bd9
+   firebase deploy --only firestore:rules
+   ```
+
+2. **Using Firebase Console**:
+   - Go to https://console.firebase.google.com/
+   - Select your user project (chickenviken-30bd9)
+   - Navigate to Firestore Database → Rules
+   - Paste the contents of firestore.rules
+   - Click "Publish"
+
+### Security Rules Structure
+
+The security rules are structured as follows:
+
+1. User documents: Only the owner can read/write their own document
+2. Orders: Users can only access their own orders
+3. Products: Read-only access for everyone
+4. All other collections: Denied by default
+
 ## Environment Variables
 
 The application uses environment variables to configure the Firebase projects. These are defined in `.env`:
@@ -77,3 +104,39 @@ Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Missing or insufficient permissions" Error**
+   - This usually means the security rules haven't been deployed to your Firebase project
+   - Follow the "Deploying Security Rules" instructions above
+   - Verify the user is authenticated before accessing Firestore
+
+2. **"No document to update" Error**
+   - This happens when trying to update a user document that doesn't exist yet
+   - The app will automatically create user documents as needed
+   - If this persists, check that the user ID matches between auth and Firestore
+
+3. **PowerShell Execution Policy Error**
+   - If you see "running scripts is disabled on this system" when using Firebase CLI
+   - Open PowerShell as Administrator and run: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`
+   - Then try the Firebase commands again
+
+### Validating Firebase Access
+
+1. Try updating your profile information to test Firestore write access
+2. Look for these debug log messages in your browser console:
+   - "User document created successfully" - Confirms write access is working
+   - "User data fetched:" - Confirms read access is working
+
+### Firestore Rules Testing
+
+You can test your Firestore rules using the Firebase Emulator Suite:
+
+```
+firebase emulators:start
+```
+
+This will start a local Firestore emulator where you can test your rules without affecting production data.

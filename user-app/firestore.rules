@@ -1,4 +1,4 @@
-// Firestore rules for user-app project - Simplified version
+// Firestore rules for user-app project - Production version
 rules_version = '2';
 
 service cloud.firestore {
@@ -10,10 +10,12 @@ service cloud.firestore {
     
     // Allow authenticated users to read and write their own orders
     match /orders/{orderId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null && 
+                         (request.resource.data.userId == request.auth.uid || 
+                          resource.data.userId == request.auth.uid);
     }
     
-    // Allow read-only access to products, categories and test collections
+    // Allow read-only access to products and categories
     match /products/{document=**} {
       allow read: if true;
     }
@@ -22,8 +24,9 @@ service cloud.firestore {
       allow read: if true;
     }
     
-    match /test_collection/{document=**} {
-      allow read, write: if request.auth != null;
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
