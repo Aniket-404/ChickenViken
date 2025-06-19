@@ -3,15 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext/index.js';
 import { useForm } from 'react-hook-form';
 
-const AdminLogin = () => {
-  const { login, signup } = useAuth();
+const AdminLogin = () => {  const { login } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isSignup, setIsSignup] = useState(false);
   
   const { register, handleSubmit, formState: { errors } } = useForm();
-
   const onSubmit = async (data) => {
     if (loading) return;
     
@@ -26,20 +23,10 @@ const AdminLogin = () => {
         throw new Error('Email and password are required');
       }
       
-      if (isSignup) {
-        // Handle signup
-        const displayName = data.displayName?.trim();
-        if (!displayName) {
-          throw new Error('Display name is required');
-        }
-        
-        await signup(email, password, displayName);
-      } else {
-        // Handle login
-        await login(email, password);
-      }
+      // Handle login
+      await login(email, password);
       
-      // If we reach here, login/signup was successful
+      // If we reach here, login was successful
       navigate('/');
     } catch (err) {
       console.error('Auth error:', err);
@@ -62,14 +49,11 @@ const AdminLogin = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-lg shadow-md">
-        <div>
-          <h2 className="text-center text-3xl font-extrabold text-gray-900">
-            {isSignup ? 'Create Admin Account' : 'Admin Login'}
+        <div>          <h2 className="text-center text-3xl font-extrabold text-gray-900">
+            Admin Login
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            {isSignup 
-              ? 'Sign up to manage ChickenViken' 
-              : 'Sign in to access the admin dashboard'}
+            Sign in to access the admin dashboard
           </p>
         </div>
         
@@ -81,24 +65,6 @@ const AdminLogin = () => {
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="rounded-md space-y-4">
-            {isSignup && (
-              <div>
-                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
-                  Display Name
-                </label>
-                <input
-                  id="displayName"
-                  type="text"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                  {...register('displayName', { 
-                    required: 'Display name is required'
-                  })}
-                />
-                {errors.displayName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.displayName.message}</p>
-                )}
-              </div>
-            )}
             
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -141,9 +107,7 @@ const AdminLogin = () => {
                 <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
               )}
             </div>
-          </div>
-
-          <div className="flex flex-col space-y-4">
+          </div>          <div className="flex flex-col space-y-4">
             <button
               type="submit"
               disabled={loading}
@@ -153,17 +117,7 @@ const AdminLogin = () => {
                   : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
               }`}
             >
-              {loading ? 'Processing...' : (isSignup ? 'Sign up' : 'Sign in')}
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => setIsSignup(!isSignup)}
-              className="text-sm text-blue-600 hover:text-blue-500"
-            >
-              {isSignup 
-                ? 'Already have an account? Sign in' 
-                : 'Need an account? Sign up'}
+              {loading ? 'Processing...' : 'Sign in'}
             </button>
           </div>
         </form>

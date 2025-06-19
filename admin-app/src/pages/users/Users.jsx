@@ -1,21 +1,154 @@
 import { useState, useEffect, useContext } from 'react';
-import { collection, getDocs, doc, deleteDoc, getDoc } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+import { collection, getDocs, doc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { db, auth } from '../../firebase/config';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../../contexts/AuthContext';
+
+const AddAdminModal = ({ isOpen, onClose, onAdd }) => {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    displayName: '',
+    permissions: []
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (loading) return;
+
+    try {
+      setLoading(true);
+      // Create the user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+
+      // Create the admin document in Firestore
+      const adminData = {
+        email: formData.email,
+        displayName: formData.displayName,
+        permissions: formData.permissions,
+        isActive: true,
+        role: 'admin',
+        createdAt: new Date(),
+        lastLogin: null
+      };
+
+      await setDoc(doc(db, 'admins', userCredential.user.uid), adminData);
+
+      toast.success('Admin user created successfully');
+      onAdd();
+      onClose();
+    } catch (error) {
+      console.error('Error creating admin:', error);
+      toast.error(error.message || 'Failed to create admin user');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="mt-3">
+          <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Create New Admin</h3>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Display Name</label>
+              <input
+                type="text"
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={formData.displayName}
+                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Permissions</label>
+              <div className="mt-2 space-y-2">
+                {['products', 'orders', 'users', 'settings'].map(permission => (
+                  <label key={permission} className="inline-flex items-center mr-4">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      checked={formData.permissions.includes(permission)}
+                      onChange={(e) => {
+                        const newPermissions = e.target.checked
+                          ? [...formData.permissions, permission]
+                          : formData.permissions.filter(p => p !== permission);
+                        setFormData({ ...formData, permissions: newPermissions });
+                      }}
+                    />
+                    <span className="ml-2 text-sm text-gray-700 capitalize">{permission}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
+                  loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {loading ? 'Creating...' : 'Create Admin'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Users = () => {
   const { currentUser, loading: authLoading } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);  const [selectedUser, setSelectedUser] = useState(null);
+  const [error, setError] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
-      if (authLoading) return; // Wait for auth to initialize
+      if (authLoading) return;
       
       if (!currentUser) {
         setError('Please log in to view admin users');
@@ -27,21 +160,18 @@ const Users = () => {
         setLoading(true);
         setError(null);
 
-        // First, get the current user's admin document (which we have permission to read)
         const currentUserDoc = await getDoc(doc(db, 'admins', currentUser.uid));
         
         if (!currentUserDoc.exists()) {
           setError('Access denied. Admin privileges required.');
           setLoading(false);
           return;
-        }        // Since we're an admin, we can now fetch all admin documents
+        }
+
         const adminsRef = collection(db, 'admins');
         const snapshot = await getDocs(adminsRef);
-        
-        if (snapshot.empty) {
-          setUsers([]);
-          return;
-        }        const usersData = snapshot.docs.map(doc => {
+
+        const usersData = snapshot.docs.map(doc => {
           const data = doc.data();
           return {
             id: doc.id,
@@ -61,9 +191,7 @@ const Users = () => {
         console.error('Error fetching admin users:', err);
         const errorMessage = 'Failed to load admin users. Please try again later.';
         setError(errorMessage);
-        toast.error(errorMessage, {
-          toastId: 'fetch-users-error' // Prevent duplicate toasts
-        });
+        toast.error(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -86,8 +214,10 @@ const Users = () => {
     setSelectedUser(user);
     setIsModalOpen(true);
   };
+
   // Delete user
-  const handleDeleteUser = async (userId) => {    if (!currentUser) {
+  const handleDeleteUser = async (userId) => {
+    if (!currentUser) {
       toast.error('You must be logged in to perform this action', {
         toastId: 'auth-error'
       });
@@ -115,14 +245,10 @@ const Users = () => {
         setSelectedUser(null);
       }
 
-      toast.success('Admin account deleted successfully', {
-        toastId: 'delete-success'
-      });
+      toast.success('Admin account deleted successfully');
     } catch (err) {
       console.error('Error deleting admin account:', err);
-      toast.error('Failed to delete admin account. Please try again.', {
-        toastId: 'delete-error'
-      });
+      toast.error('Failed to delete admin account. Please try again.');
     }
   };
 
@@ -150,145 +276,127 @@ const Users = () => {
     );
   }
 
-  // Empty state
-  if (!loading && users.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="text-gray-500 text-lg mb-4">No admin users found</div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Admin User Management</h1>
-          {/* Search */}
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-800">Admin User Management</h1>
+          <button
+            onClick={() => setIsAddAdminModalOpen(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+          >
+            Add New Admin
+          </button>
+        </div>
+        
+        {/* Search */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="flex gap-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Search admins..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
-          <input
-            type="text"
-            placeholder="Search admin users..."
-            className="w-full md:w-64 px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        </div>
+
+        {/* User list */}
+        <div className="bg-white shadow-md rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredUsers.map((user) => (
+                <tr key={user.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="font-medium text-gray-900">{user.displayName}</div>
+                    <div className="text-sm text-gray-500">{user.role}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {user.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.createdAt}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.lastLogin}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => handleViewDetails(user)}
+                      className="text-blue-600 hover:text-blue-900 mr-4"
+                    >
+                      View
+                    </button>
+                    {currentUser.uid === user.id && (
+                      <button
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="overflow-x-auto bg-white rounded-lg shadow">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{user.displayName}</div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{user.role}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    user.isActive 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {user.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {user.createdAt}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {user.lastLogin}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => handleViewDetails(user)}
-                    className="text-indigo-600 hover:text-indigo-900 mr-4"
-                  >
-                    View
-                  </button>
-                  <button
-                    onClick={() => handleDeleteUser(user.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Add Admin Modal */}
+      <AddAdminModal
+        isOpen={isAddAdminModalOpen}
+        onClose={() => setIsAddAdminModalOpen(false)}
+        onAdd={() => {
+          // Refresh the users list after adding a new admin
+          window.location.reload();
+        }}
+      />
 
       {/* User Details Modal */}
       {isModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-lg w-full mx-4">
-            <h2 className="text-xl font-bold mb-4">Admin User Details</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="font-medium">Name:</label>
-                <p>{selectedUser.displayName}</p>
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">User Details</h3>
+              <div className="space-y-3">
+                <p><strong>Name:</strong> {selectedUser.displayName}</p>
+                <p><strong>Email:</strong> {selectedUser.email}</p>
+                <p><strong>Role:</strong> {selectedUser.role}</p>
+                <p><strong>Status:</strong> {selectedUser.isActive ? 'Active' : 'Inactive'}</p>
+                <p><strong>Joined:</strong> {selectedUser.createdAt}</p>
+                <p><strong>Last Login:</strong> {selectedUser.lastLogin}</p>
+                <div>
+                  <strong>Permissions:</strong>
+                  <ul className="list-disc list-inside mt-1">
+                    {selectedUser.permissions.map(permission => (
+                      <li key={permission} className="capitalize">{permission}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <div>
-                <label className="font-medium">Email:</label>
-                <p>{selectedUser.email}</p>
+              <div className="mt-5">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                >
+                  Close
+                </button>
               </div>
-              <div>
-                <label className="font-medium">Role:</label>
-                <p>{selectedUser.role}</p>
-              </div>
-              <div>
-                <label className="font-medium">Status:</label>
-                <p>{selectedUser.isActive ? 'Active' : 'Inactive'}</p>
-              </div>
-              <div>
-                <label className="font-medium">Created:</label>
-                <p>{selectedUser.createdAt}</p>
-              </div>
-              <div>
-                <label className="font-medium">Last Login:</label>
-                <p>{selectedUser.lastLogin}</p>
-              </div>
-              <div>
-                <label className="font-medium">Permissions:</label>
-                <ul className="list-disc list-inside">
-                  {selectedUser.permissions && selectedUser.permissions.length > 0 ? (
-                    selectedUser.permissions.map((permission, index) => (
-                      <li key={index}>{permission}</li>
-                    ))
-                  ) : (
-                    <li>No specific permissions set</li>
-                  )}
-                </ul>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>
