@@ -8,11 +8,11 @@ const Users = () => {
   const { currentUser, loading: authLoading } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [error, setError] = useState(null);  const [selectedUser, setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filter, setFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');  // Fetch users
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       if (authLoading) return; // Wait for auth to initialize
@@ -41,9 +41,7 @@ const Users = () => {
         if (snapshot.empty) {
           setUsers([]);
           return;
-        }
-
-        const usersData = snapshot.docs.map(doc => {
+        }        const usersData = snapshot.docs.map(doc => {
           const data = doc.data();
           return {
             id: doc.id,
@@ -57,12 +55,8 @@ const Users = () => {
             permissions: data.permissions || []
           };
         });
-          // Filter users if needed
-        const filteredData = filter === 'all' 
-          ? usersData 
-          : usersData.filter(user => user.isActive === (filter === 'active'));
         
-        setUsers(filteredData);
+        setUsers(usersData);
       } catch (err) {
         console.error('Error fetching admin users:', err);
         const errorMessage = 'Failed to load admin users. Please try again later.';
@@ -76,7 +70,7 @@ const Users = () => {
     };
 
     fetchUsers();
-  }, [filter, currentUser, authLoading]);
+  }, [currentUser, authLoading]);
 
   // Filter users based on search term
   const filteredUsers = users.filter(user => {
@@ -169,28 +163,9 @@ const Users = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-4">Admin User Management</h1>
-        
-        {/* Filters and Search */}
+          {/* Search */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="flex gap-4">
-            <button
-              className={`px-4 py-2 rounded ${filter === 'all' ? 'bg-primary text-white' : 'bg-gray-200'}`}
-              onClick={() => setFilter('all')}
-            >
-              All
-            </button>
-            <button
-              className={`px-4 py-2 rounded ${filter === 'active' ? 'bg-primary text-white' : 'bg-gray-200'}`}
-              onClick={() => setFilter('active')}
-            >
-              Active
-            </button>
-            <button
-              className={`px-4 py-2 rounded ${filter === 'inactive' ? 'bg-primary text-white' : 'bg-gray-200'}`}
-              onClick={() => setFilter('inactive')}
-            >
-              Inactive
-            </button>
           </div>
           <input
             type="text"
