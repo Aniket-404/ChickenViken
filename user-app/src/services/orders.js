@@ -185,10 +185,9 @@ export const cancelOrder = async (orderId) => {
     }
     
     console.log('Canceling order with ID:', orderId);
-    
-    const orderRef = doc(db, 'orders', orderId);
+      const orderRef = doc(db, 'orders', orderId);
     await updateDoc(orderRef, {
-      status: 'canceled',
+      status: 'cancelled',
       updatedAt: serverTimestamp()
     });
     

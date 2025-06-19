@@ -776,12 +776,11 @@ const Profile = () => {
                       <span>{order.orderId}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span 
-                        className={`px-2 py-1 text-xs rounded-full ${
+                      <span                        className={`px-2 py-1 text-xs rounded-full ${
                           order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                           order.status === 'processing' ? 'bg-blue-100 text-blue-800' : 
                           order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
-                          order.status === 'canceled' ? 'bg-gray-100 text-gray-800' :
+                          order.status === 'canceled' || order.status === 'cancelled' ? 'bg-gray-100 text-gray-800' :
                           'bg-gray-100 text-gray-800'
                         }`}
                       >
