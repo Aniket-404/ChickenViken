@@ -89,33 +89,29 @@ const Settings = () => {
       setSaving(false);
     }
   };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="skeleton h-12 w-12 rounded-full"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
-      
-      {error && (
-        <div className="bg-primary-light text-primary-dark p-4 rounded-standard">
+      <h1 className="text-2xl font-bold text-gray-800">Settings</h1>      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-standard mb-4">
           {error}
         </div>
       )}
       
       {success && (
-        <div className="bg-green-50 text-green-600 p-4 rounded-standard">
+        <div className="bg-green-50 text-green-600 p-4 rounded-standard mb-4">
           {success}
         </div>
       )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="card overflow-hidden">
+        <form onSubmit={handleSubmit}>
+        <div className="bg-white rounded-lg shadow overflow-hidden">
           {/* Store Information */}
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">Store Information</h2>
@@ -208,15 +204,14 @@ const Settings = () => {
           <div className="px-6 py-4 border-t border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">Store Features</h2>
           </div>
-          <div className="px-6 py-4 space-y-4">
-            <div className="flex items-center">
+          <div className="px-6 py-4 space-y-4">            <div className="flex items-center">
               <input
                 type="checkbox"
                 id="enableOrdering"
                 name="enableOrdering"
                 checked={settings.enableOrdering}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
               />
               <label htmlFor="enableOrdering" className="ml-2 block text-sm text-gray-900">
                 Enable Online Ordering
@@ -230,7 +225,7 @@ const Settings = () => {
                 name="enablePayments"
                 checked={settings.enablePayments}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
               />
               <label htmlFor="enablePayments" className="ml-2 block text-sm text-gray-900">
                 Enable Online Payments
@@ -244,7 +239,7 @@ const Settings = () => {
                 name="orderNotifications"
                 checked={settings.orderNotifications}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
               />
               <label htmlFor="orderNotifications" className="ml-2 block text-sm text-gray-900">
                 Enable Order Notifications
@@ -258,7 +253,7 @@ const Settings = () => {
                 name="allowGuestCheckout"
                 checked={settings.allowGuestCheckout}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 rounded"
               />
               <label htmlFor="allowGuestCheckout" className="ml-2 block text-sm text-gray-900">
                 Allow Guest Checkout
@@ -269,8 +264,7 @@ const Settings = () => {
           {/* Maintenance Mode */}
           <div className="px-6 py-4 border-t border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">Maintenance Mode</h2>
-          </div>
-          <div className="px-6 py-4">
+          </div>          <div className="px-6 py-4">
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -278,7 +272,7 @@ const Settings = () => {
                 name="maintenanceMode"
                 checked={settings.maintenanceMode}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                className="h-4 w-4 rounded"
               />
               <label htmlFor="maintenanceMode" className="ml-2 block text-sm text-gray-900">
                 Enable Maintenance Mode
@@ -288,13 +282,12 @@ const Settings = () => {
               When enabled, the store will be temporarily unavailable to customers.
             </p>
           </div>
-          
-          {/* Submit Button */}
+            {/* Submit Button */}
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
             <button
               type="submit"
               disabled={saving}
-              className={`admin-btn-primary ${
+              className={`btn-primary ${
                 saving
                   ? 'opacity-70 cursor-not-allowed'
                   : ''
