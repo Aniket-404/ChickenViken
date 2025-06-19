@@ -161,3 +161,44 @@ export const updateUserAddresses = async (userId, addresses) => {
     throw error;
   }
 };
+
+/**
+ * Adds a new address to a user's addresses
+ * @param {string} userId - The user's ID
+ * @param {Object} address - The address to add
+ * @returns {Promise<{id: string}>} The address with the generated ID
+ */
+export const addUserAddress = async (userId, address) => {
+  try {
+    if (!userId) throw new Error('User ID is required');
+    
+    // Get current user data
+    const userData = await fetchUserData(userId);
+    
+    // Generate a unique ID for the address
+    const addressId = `addr_${Date.now()}`;
+    
+    // Create address with ID
+    const newAddress = {
+      ...address,
+      id: addressId
+    };
+    
+    // Get existing addresses or initialize empty array
+    const existingAddresses = userData?.addresses || [];
+    
+    // Add new address to the array
+    const updatedAddresses = [...existingAddresses, newAddress];
+    
+    // Update user with new addresses array
+    await updateUserData(userId, { addresses: updatedAddresses });
+    
+    // Return the address with ID for client-side usage
+    return {
+      id: addressId
+    };
+  } catch (error) {
+    console.error('Error adding user address:', error);
+    throw error;
+  }
+};

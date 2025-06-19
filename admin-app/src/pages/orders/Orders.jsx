@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, updateDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+import { userDb } from '../../firebase/config';
 import { formatCurrency } from '../../utils/currency';
 
 const Orders = () => {
@@ -10,12 +10,24 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Debug userDb information
+  useEffect(() => {
+    console.log('userDb info:', {
+      userDbExists: !!userDb,
+      userDbType: typeof userDb,
+      userDbProjectId: userDb?._databaseId?.projectId || 'Unknown'
+    });
+  }, []);
+
   // Fetch orders
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+        console.log('Fetching orders from user-app Firestore');
+        
+        // Use userDb instead of db to fetch from user-app Firestore
+        const ordersQuery = query(collection(userDb, 'orders'), orderBy('createdAt', 'desc'));
         const snapshot = await getDocs(ordersQuery);
         
         const ordersData = snapshot.docs.map(doc => ({
@@ -24,6 +36,7 @@ const Orders = () => {
           createdAt: doc.data().createdAt?.toDate().toLocaleDateString() || 'N/A'
         }));
         
+        console.log(`Found ${ordersData.length} orders in user-app Firestore`);
         setOrders(ordersData);
       } catch (err) {
         console.error('Error fetching orders:', err);
@@ -35,12 +48,15 @@ const Orders = () => {
 
     fetchOrders();
   }, []);
-
   // Update order status
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      await updateDoc(doc(db, 'orders', orderId), {
-        status: newStatus
+      console.log(`Updating order ${orderId} status to ${newStatus} in user-app Firestore`);
+      
+      // Use userDb instead of db to update in user-app Firestore
+      await updateDoc(doc(userDb, 'orders', orderId), {
+        status: newStatus,
+        updatedAt: new Date()
       });
       
       // Update local state
@@ -57,7 +73,10 @@ const Orders = () => {
   const handleDelete = async (orderId) => {
     if (window.confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
       try {
-        await deleteDoc(doc(db, 'orders', orderId));
+        console.log(`Deleting order ${orderId} from user-app Firestore`);
+        
+        // Use userDb instead of db to delete from user-app Firestore
+        await deleteDoc(doc(userDb, 'orders', orderId));
         
         // Update local state
         setOrders(orders.filter(order => order.id !== orderId));
