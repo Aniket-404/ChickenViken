@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import { collection, getDocs, doc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../../firebase/config';
@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import { AuthContext } from '../../contexts/AuthContext';
 
 const AddAdminModal = ({ isOpen, onClose, onAdd }) => {
+  const { currentUser } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -20,6 +21,20 @@ const AddAdminModal = ({ isOpen, onClose, onAdd }) => {
 
     try {
       setLoading(true);
+
+      // Check if current user has permission to create admins
+      const currentUserDoc = await getDoc(doc(db, 'admins', currentUser.uid));
+      if (!currentUserDoc.exists()) {
+        throw new Error('Access denied. Admin privileges required.');
+      }
+
+      const currentUserData = currentUserDoc.data();
+      const hasUsersPermission = currentUserData.permissions?.includes('users');
+      
+      if (!hasUsersPermission) {
+        throw new Error('Access denied. You do not have permission to create admin users.');
+      }
+
       // Create the user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -144,8 +159,34 @@ const Users = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
+  const [hasUsersPermission, setHasUsersPermission] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Function to check if current user has users permission, memoized with useCallback
+  const checkUsersPermission = useCallback(async () => {
+    if (!currentUser) return false;
+    
+    try {
+      const userDoc = await getDoc(doc(db, 'admins', currentUser.uid));
+      if (!userDoc.exists()) return false;
+      
+      const userData = userDoc.data();
+      return userData.permissions?.includes('users') || false;
+    } catch (err) {
+      console.error('Error checking permissions:', err);
+      return false;
+    }
+  }, [currentUser]);
 
+  // Effect to check user permissions
+  useEffect(() => {
+    const checkPermission = async () => {
+      const hasPermission = await checkUsersPermission();
+      setHasUsersPermission(hasPermission);
+    };
+    checkPermission();
+  }, [checkUsersPermission]);
+
+  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       if (authLoading) return;
@@ -160,10 +201,21 @@ const Users = () => {
         setLoading(true);
         setError(null);
 
+        // Check for users permission
         const currentUserDoc = await getDoc(doc(db, 'admins', currentUser.uid));
         
         if (!currentUserDoc.exists()) {
           setError('Access denied. Admin privileges required.');
+          setLoading(false);
+          return;
+        }
+
+        // Check if user has 'users' permission
+        const currentUserData = currentUserDoc.data();
+        const hasUsersPermission = currentUserData.permissions?.includes('users');
+        
+        if (!hasUsersPermission) {
+          setError('Access denied. You do not have permission to view users.');
           setLoading(false);
           return;
         }
@@ -224,19 +276,34 @@ const Users = () => {
       return;
     }
 
-    // Can only delete your own account (matches Firestore security rules)
-    if (userId !== currentUser.uid) {
-      toast.error('For security reasons, admins can only delete their own account', {
-        toastId: 'delete-permission-error'
-      });
-      return;
-    }
-
-    if (!window.confirm('Are you sure you want to delete your admin account? This action cannot be undone.')) {
-      return;
-    }
-
     try {
+      // Check if the user has 'users' permission
+      const currentUserDoc = await getDoc(doc(db, 'admins', currentUser.uid));
+      if (!currentUserDoc.exists()) {
+        toast.error('Access denied. Admin privileges required.');
+        return;
+      }
+
+      const currentUserData = currentUserDoc.data();
+      const hasUsersPermission = currentUserData.permissions?.includes('users');
+      
+      if (!hasUsersPermission) {
+        toast.error('Access denied. You do not have permission to manage users.');
+        return;
+      }
+
+      // Even with users permission, admins can only delete their own account
+      if (userId !== currentUser.uid) {
+        toast.error('For security reasons, admins can only delete their own account', {
+          toastId: 'delete-permission-error'
+        });
+        return;
+      }
+
+      if (!window.confirm('Are you sure you want to delete your admin account? This action cannot be undone.')) {
+        return;
+      }
+
       await deleteDoc(doc(db, 'admins', userId));
       setUsers(users.filter(u => u.id !== userId));
       
@@ -281,12 +348,14 @@ const Users = () => {
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold text-gray-800">Admin User Management</h1>
-          <button
-            onClick={() => setIsAddAdminModalOpen(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-          >
-            Add New Admin
-          </button>
+          {hasUsersPermission && (
+            <button
+              onClick={() => setIsAddAdminModalOpen(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              Add New Admin
+            </button>
+          )}
         </div>
         
         {/* Search */}
