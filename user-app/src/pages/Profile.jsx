@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 const Profile = () => {
   const { currentUser, logout } = useAuth();
@@ -13,6 +14,9 @@ const Profile = () => {
     phone: '',
     addresses: []
   });
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderError, setOrderError] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -120,7 +124,71 @@ const Profile = () => {
     };
 
     fetchUserData();
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate]);  // Fetch user orders
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!currentUser) return;
+      
+      try {
+        setOrdersLoading(true);
+        setOrderError(null);
+        
+        console.log('Fetching orders for user:', currentUser.uid);
+        const { fetchUserOrders } = await import('../services/orders');
+        const userOrders = await fetchUserOrders(currentUser.uid);
+        
+        console.log('Fetched user orders:', userOrders);
+        console.log('Number of orders found:', userOrders.length);
+        setOrders(userOrders);
+      } catch (err) {
+        console.error('Error fetching orders:', err);
+        
+        // Provide more specific error messages
+        if (err.code === 'permission-denied') {
+          setOrderError('You don\'t have permission to access your orders. Please contact support.');
+        } else if (err.code === 'failed-precondition') {
+          setOrderError('Unable to fetch orders. Firebase index may be missing. Please contact support.');
+        } else if (err.code === 'unavailable') {
+          setOrderError('Order service is temporarily unavailable. Please try again later.');
+        } else {
+          setOrderError('Failed to load order history. Please try again later.');
+        }
+        
+        // Clear orders to avoid showing empty state message
+        setOrders([]);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+    
+    fetchOrders();
+  }, [currentUser]);
+
+  // Function to handle order cancellation
+  const handleCancelOrder = async (orderId) => {
+    try {
+      setLoading(true);
+      
+      const { cancelOrder } = await import('../services/orders');
+      await cancelOrder(orderId);
+      
+      // Update the local orders state
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, status: 'canceled' } 
+            : order
+        )
+      );
+      
+      toast.success('Order canceled successfully');
+    } catch (err) {
+      console.error('Error canceling order:', err);
+      toast.error('Failed to cancel order. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -640,7 +708,183 @@ const Profile = () => {
             </div>
           )}
         </div>
-      </div>        <div className="flex justify-end mt-8">
+      </div>      
+      {/* My Orders Section */}      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">My Orders</h2>
+            {orderError && (              <button 
+                onClick={async () => {
+                  try {
+                    setOrdersLoading(true);
+                    setOrderError(null);
+                    
+                    console.log('Retrying order fetch for user:', currentUser.uid);
+                    const { fetchUserOrders } = await import('../services/orders');
+                    const userOrders = await fetchUserOrders(currentUser.uid);
+                    
+                    console.log('Re-fetched user orders:', userOrders);
+                    console.log('Number of orders found:', userOrders.length);
+                    setOrders(userOrders);
+                  } catch (err) {
+                    console.error('Error re-fetching orders:', err);
+                    
+                    // Provide more specific error messages
+                    if (err.code === 'permission-denied') {
+                      setOrderError('You don\'t have permission to access your orders. Please contact support.');
+                    } else if (err.code === 'failed-precondition') {
+                      setOrderError('Unable to fetch orders. Firebase index may be missing. Please contact support.');
+                    } else if (err.code === 'unavailable') {
+                      setOrderError('Order service is temporarily unavailable. Please try again later.');
+                    } else {
+                      setOrderError('Failed to load order history. Please try again later.');
+                    }
+                    
+                    setOrders([]);
+                  } finally {
+                    setOrdersLoading(false);
+                  }
+                }}
+                className="text-red-600 hover:text-red-800 flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+                Try Again
+              </button>
+            )}
+          </div>
+          
+          {orderError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+              <p className="font-medium">Error Loading Orders</p>
+              <p>{orderError}</p>
+            </div>
+          )}
+          
+          {ordersLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-600"></div>
+            </div>
+          ) : !orderError && orders.length > 0 ? (
+            <div className="space-y-6">
+              {orders.map(order => (
+                <div key={order.id} className="border rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                    <div>
+                      <span className="font-medium">Order ID: </span>
+                      <span>{order.orderId}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span 
+                        className={`px-2 py-1 text-xs rounded-full ${
+                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                          order.status === 'processing' ? 'bg-blue-100 text-blue-800' : 
+                          order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
+                          order.status === 'canceled' ? 'bg-gray-100 text-gray-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {new Date(order.orderDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4">                    <div className="mb-4">
+                      <h3 className="font-medium mb-2">Items</h3>
+                      <div className="space-y-2">
+                        {Array.isArray(order.items) && order.items.length > 0 ? (
+                          order.items.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center">
+                              <div className="flex items-center">
+                                {item.imageUrl && (
+                                  <img 
+                                    src={item.imageUrl} 
+                                    alt={item.name || 'Product'}
+                                    className="w-12 h-12 object-cover rounded mr-3"
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = 'https://via.placeholder.com/48?text=No+Image';
+                                    }}
+                                  />
+                                )}
+                                <div>
+                                  <p className="font-medium">{item.name || 'Unknown Product'}</p>
+                                  <p className="text-sm text-gray-500">Qty: {item.quantity || 1}</p>
+                                </div>
+                              </div>
+                              <p>₹{(item.price || 0).toFixed(2)}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500">No items information available</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="border-t pt-3 mb-3">                      <div className="flex justify-between mb-1">
+                        <span>Subtotal</span>
+                        <span>₹{(order.totalAmount || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between mb-1">
+                        <span>Delivery Fee</span>
+                        <span>₹{(order.deliveryFee || 40).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold">
+                        <span>Total</span>
+                        <span>₹{(order.finalAmount || (order.totalAmount || 0) + 40).toFixed(2)}</span>
+                      </div>
+                    </div>
+                      <div className="flex justify-between items-center pt-3 border-t">
+                      <div>
+                        {order.address ? (
+                          <p className="text-sm">
+                            <span className="font-medium">Delivery Address:</span> {' '}
+                            {order.address.name || ''}, {order.address.street || ''}, {order.address.city || ''}, {order.address.state || ''} {order.address.zipCode || order.address.pincode || ''}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-500">Delivery address not available</p>
+                        )}
+                        <p className="text-sm">
+                          <span className="font-medium">Payment:</span> {order.paymentMethod || 'Not specified'}
+                        </p>
+                      </div>
+                      
+                      {order.status === 'pending' && (
+                        <button
+                          onClick={() => handleCancelOrder(order.id)}
+                          disabled={loading}
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition-colors text-sm disabled:opacity-50"
+                        >
+                          {loading ? 'Canceling...' : 'Cancel Order'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>              ))}
+            </div>
+          ) : !orderError ? (
+            <div className="text-center py-8">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <p className="text-gray-500 text-lg mb-1">No Orders Yet</p>
+              <p className="text-gray-400">You haven't placed any orders yet.</p>
+              <button 
+                onClick={() => navigate('/')}
+                className="mt-4 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+              >
+                Browse Products
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      
+      <div className="flex justify-end mt-8">
         <button 
           onClick={handleLogout}
           className="bg-gray-200 text-gray-800 px-6 py-3 rounded-md hover:bg-gray-300 transition-colors"

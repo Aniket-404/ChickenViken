@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, getDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 /**
@@ -95,23 +95,106 @@ export const createOrder = async (userId, items, totalAmount, address, paymentMe
 export const fetchUserOrders = async (userId) => {
   try {
     if (!userId) {
+      console.error('fetchUserOrders: User ID is required');
       throw new Error('User ID is required');
-    }    console.log('Fetching orders from user-app Firestore for user:', userId);
+    }
     
+    console.log('Fetching orders from user-app Firestore for user:', userId);
+    console.log('Using Firestore instance with project ID:', db?._databaseId?.projectId);
+    
+    // Use a simpler query that doesn't require a composite index
+    // Just filter by userId and we'll sort the results in memory
     const orderQuery = query(
       collection(db, 'orders'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', userId)
     );
     
+    console.log('Executing Firestore query for orders...');
     const snapshot = await getDocs(orderQuery);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate().toISOString() || null
-    }));
+    console.log(`Found ${snapshot.docs.length} orders for user:`, userId);
+    
+    // Map the query results to a more usable format
+    const orders = snapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      // Create consistent date objects for sorting
+      let createdAtDate;
+      try {
+        // Try to convert Firestore timestamp to Date
+        createdAtDate = data.createdAt?.toDate?.() 
+          ? data.createdAt.toDate() 
+          : data.createdAt instanceof Date 
+            ? data.createdAt 
+            : data.orderDate 
+              ? new Date(data.orderDate) 
+              : new Date();
+      } catch (err) {
+        console.warn('Error parsing date:', err);
+        createdAtDate = new Date(); // Fallback to current date
+      }
+      
+      // Format as ISO string for display
+      const createdAt = createdAtDate.toISOString();
+      
+      return {
+        id: doc.id,
+        ...data,
+        createdAt,
+        // Add a JavaScript Date object for sorting
+        createdAtDate
+      };
+    });
+    
+    // Sort orders by date (newest first) in memory
+    // This replaces the Firestore orderBy which requires an index
+    orders.sort((a, b) => b.createdAtDate - a.createdAtDate);
+      // Remove the temporary sorting field
+    const cleanedOrders = orders.map(order => {
+      // eslint-disable-next-line no-unused-vars
+      const { createdAtDate, ...rest } = order;
+      return rest;
+    });
+    
+    // Log a sample order for debugging (if available)
+    if (cleanedOrders.length > 0) {
+      console.log('Sample order data:', {
+        id: cleanedOrders[0].id,
+        orderId: cleanedOrders[0].orderId,
+        status: cleanedOrders[0].status,
+        items: cleanedOrders[0].items?.length || 0
+      });
+    }
+    
+    return cleanedOrders;
   } catch (error) {
     console.error('Error fetching orders:', error);
+    console.error('Error details:', error.message, error.code);
+    throw error;
+  }
+};
+
+/**
+ * Cancels an order
+ * @param {string} orderId - The Firestore document ID of the order
+ * @returns {Promise<void>}
+ */
+export const cancelOrder = async (orderId) => {
+  try {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+    
+    console.log('Canceling order with ID:', orderId);
+    
+    const orderRef = doc(db, 'orders', orderId);
+    await updateDoc(orderRef, {
+      status: 'canceled',
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('Order canceled successfully');
+  } catch (error) {
+    console.error('Error canceling order:', error);
     throw error;
   }
 };
