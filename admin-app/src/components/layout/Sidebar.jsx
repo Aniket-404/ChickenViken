@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext/index.js';
+import { db } from '../../firebase/config';
+import { doc, getDoc } from 'firebase/firestore';
 
 // Icons
 const DashboardIcon = () => (
@@ -50,6 +52,28 @@ const LogoutIcon = () => (
 const Sidebar = () => {
   const { logout, currentUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [adminDetails, setAdminDetails] = useState({ displayName: '', role: 'Admin' });
+
+  // Fetch admin details
+  useEffect(() => {
+    const fetchAdminDetails = async () => {
+      if (currentUser?.uid) {
+        try {
+          const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
+          if (adminDoc.exists()) {
+            const data = adminDoc.data();
+            setAdminDetails({
+              displayName: data.displayName || 'Admin User',
+              role: data.role || 'Admin'
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching admin details:', error);
+        }
+      }
+    };
+    fetchAdminDetails();
+  }, [currentUser]);
 
   const handleLogout = async () => {
     try {
@@ -117,8 +141,8 @@ const Sidebar = () => {
                     </svg>
                   </div>
                   <div>
-                    <div className="font-medium">{currentUser?.email}</div>
-                    <div className="text-sm text-gray-500">Admin</div>
+                    <div className="font-medium text-gray-900">{adminDetails.displayName}</div>
+                    <div className="text-sm text-gray-600">{adminDetails.role}</div>
                   </div>
                 </div>
               </div>
@@ -178,8 +202,8 @@ const Sidebar = () => {
                     </svg>
                   </div>
                   <div>
-                    <div className="font-medium truncate max-w-[144px]">{currentUser?.email}</div>
-                    <div className="text-sm text-gray-500">Admin</div>
+                    <div className="font-medium text-gray-900 truncate max-w-[144px]">{adminDetails.displayName}</div>
+                    <div className="text-sm text-gray-600">{adminDetails.role}</div>
                   </div>
                 </div>
               </div>
