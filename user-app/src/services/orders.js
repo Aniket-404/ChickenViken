@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, getDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 /**
@@ -19,6 +19,17 @@ export const createOrder = async (userId, items, totalAmount, address, paymentMe
 
     console.log('Creating order with address:', JSON.stringify(address));
 
+    // Try to get the user document to get the email
+    let userEmail = '';
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        userEmail = userDoc.data().email || '';
+      }
+    } catch (err) {
+      console.warn('Could not fetch user email:', err);
+    }
+
     // Add order metadata
     const orderMetadata = {
       orderId: `ORD${Date.now()}`,
@@ -27,12 +38,14 @@ export const createOrder = async (userId, items, totalAmount, address, paymentMe
     };
 
     console.log('Order metadata:', orderMetadata);
-      // Format the order data
+    
+    // Format the order data
     const orderData = {
       userId,
       orderId: orderMetadata.orderId,
       orderDate: orderMetadata.orderDate,
       userDisplayId: orderMetadata.userDisplayId,
+      customerEmail: userEmail, // Add email to the order for admin-app
       items: items.map(item => ({
         id: item.id,
         name: item.name,
@@ -50,17 +63,20 @@ export const createOrder = async (userId, items, totalAmount, address, paymentMe
         street: String(address.street || ''),
         city: String(address.city || ''),
         state: String(address.state || ''),
-        zipCode: String(address.zipCode || '')
+        zipCode: String(address.zipCode || address.pincode || '') // Support legacy 'pincode' field
       },
       status: 'pending',
       paymentStatus: 'paid', // Since we're using UPI
-      paymentMethod,      createdAt: serverTimestamp(),
+      paymentMethod,
+      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    };    console.log('Creating order in user-app Firestore...');
+    };
+      console.log('Creating order in user-app Firestore...');
     const orderRef = await addDoc(collection(db, 'orders'), orderData);
     console.log('Order created successfully with ID:', orderRef.id);
     console.log('User-friendly Order ID:', orderMetadata.orderId);
-      // Return both the Firestore ID and the readable order ID
+    
+    // Return both the Firestore ID and the readable order ID
     return {
       id: orderRef.id,
       orderId: orderMetadata.orderId

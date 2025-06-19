@@ -33,55 +33,67 @@ const Checkout = () => {
   const { currentUser } = useAuth();
   const { cartItems, total, clearCart } = useCart();
   const navigate = useNavigate();
-  
-  const [addresses, setAddresses] = useState([]);
+    const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState('');
   const [addingNewAddress, setAddingNewAddress] = useState(false);
   const [paymentStep, setPaymentStep] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [userData, setUserData] = useState(null);
   
-  const { register, handleSubmit, formState: { errors } } = useForm();
-  // Fetch addresses when component mounts
+  const { register, handleSubmit, formState: { errors } } = useForm();  // Fetch addresses when component mounts
   useEffect(() => {
-    const fetchAddresses = async () => {
+    const fetchUserData = async () => {
       if (currentUser) {
         try {
-          const { fetchUserAddresses } = await import('../services/users');
-          const userAddresses = await fetchUserAddresses(currentUser.uid);
+          // Import user services
+          const userServices = await import('../services/users');
+          
+          // Fetch user data
+          const userData = await userServices.fetchUserData(currentUser.uid);
+          setUserData(userData);
+          
+          // Fetch addresses
+          const userAddresses = await userServices.fetchUserAddresses(currentUser.uid);
           
           if (userAddresses && userAddresses.length > 0) {
             // Transform addresses to ensure they have proper structure
             const formattedAddresses = userAddresses.map(addr => ({
               id: addr.id || String(Date.now()), // Fallback ID if none exists
-              name: addr.name,
-              phone: addr.phone,
+              name: addr.name || userData?.name || currentUser.displayName || '',
+              phone: addr.phone || userData?.phone || '',
               street: addr.street,
               city: addr.city,
               state: addr.state,
-              zipCode: addr.zipCode
+              zipCode: addr.zipCode || addr.pincode || ''
             }));
             
             setAddresses(formattedAddresses);
             setSelectedAddress(formattedAddresses[0].id);
           }
         } catch (err) {
-          console.error('Error fetching addresses:', err);
-          toast.error('Failed to load addresses');
+          console.error('Error fetching user data:', err);
+          toast.error('Failed to load user data');
         }
       }
     };
 
-    fetchAddresses();
+    fetchUserData();
   }, [currentUser]);const handlePayment = async () => {
     setLoading(true);
     setErrorMessage(null);
     
-    try {
-      // Validate address
+    try {      // Validate address
       const selectedAddressDetails = addresses.find(addr => addr.id === selectedAddress);
       if (!selectedAddressDetails) {
         toast.error('Please select a valid delivery address');
+        setLoading(false);
+        return;
+      }
+
+      // Extra validation for required address fields
+      if (!selectedAddressDetails.street || !selectedAddressDetails.city || !selectedAddressDetails.state) {
+        toast.error('Selected address is missing required fields');
         setLoading(false);
         return;
       }
@@ -101,13 +113,15 @@ const Checkout = () => {
         return;
       }      // Create a clean address object for the admin-app order, omitting the id
       const addressForOrder = {
-        name: String(selectedAddressDetails.name || ''),
-        phone: String(selectedAddressDetails.phone || ''),
+        name: String(selectedAddressDetails.name || userData?.name || currentUser?.displayName || ''),
+        phone: String(selectedAddressDetails.phone || userData?.phone || ''),
         street: String(selectedAddressDetails.street || ''),
         city: String(selectedAddressDetails.city || ''),
         state: String(selectedAddressDetails.state || ''),
-        zipCode: String(selectedAddressDetails.zipCode || '')
+        zipCode: String(selectedAddressDetails.zipCode || selectedAddressDetails.pincode || '')
       };
+      
+      console.log('Using address for order:', JSON.stringify(addressForOrder));
       
       // Simulate payment processing (UPI)
       toast.info('Processing payment...');

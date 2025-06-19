@@ -16,13 +16,14 @@ const Profile = () => {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    phone: ''  });
-  const [addingAddress, setAddingAddress] = useState(false);
+    phone: ''  });  const [addingAddress, setAddingAddress] = useState(false);
   const [newAddress, setNewAddress] = useState({
+    name: '',
+    phone: '',
     street: '',
     city: '',
     state: '',
-    pincode: '',
+    zipCode: '',
     type: 'home'
   });
 
@@ -172,7 +173,7 @@ const Profile = () => {
       setError(null);
 
       // Validate address
-      if (!newAddress.street || !newAddress.city || !newAddress.state || !newAddress.pincode) {
+      if (!newAddress.name || !newAddress.phone || !newAddress.street || !newAddress.city || !newAddress.state || !newAddress.zipCode) {
         setError('Please fill in all address fields');
         setLoading(false);
         return;
@@ -198,14 +199,14 @@ const Profile = () => {
       } catch (firestoreErr) {
         console.error('Error updating Firestore addresses:', firestoreErr);
         setError('Address added locally only. Changes will not persist between sessions.');
-      }
-
-      setAddingAddress(false);
+      }      setAddingAddress(false);
       setNewAddress({
+        name: '',
+        phone: '',
         street: '',
         city: '',
         state: '',
-        pincode: '',
+        zipCode: '',
         type: 'home'
       });
     } catch (err) {
@@ -390,10 +391,31 @@ const Profile = () => {
             )}
           </div>
           
-          {addingAddress ? (
-            <div className="space-y-4 border p-4 rounded-md">
+          {addingAddress ? (            <div className="space-y-4 border p-4 rounded-md">
               <h3 className="font-medium">Add New Address</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 mb-2">Full Name</label>
+                  <input 
+                    type="text"
+                    name="name"
+                    value={newAddress.name}
+                    onChange={handleAddressChange}
+                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="Enter full name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-2">Phone Number</label>
+                  <input 
+                    type="text"
+                    name="phone"
+                    value={newAddress.phone}
+                    onChange={handleAddressChange}
+                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="Enter phone number"
+                  />
+                </div>
                 <div>
                   <label className="block text-gray-700 mb-2">Street Address</label>
                   <input 
@@ -425,11 +447,11 @@ const Profile = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 mb-2">Pincode</label>
+                  <label className="block text-gray-700 mb-2">Zip Code</label>
                   <input 
                     type="text"
-                    name="pincode"
-                    value={newAddress.pincode}
+                    name="zipCode"
+                    value={newAddress.zipCode}
                     onChange={handleAddressChange}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
@@ -480,12 +502,13 @@ const Profile = () => {
                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
                         </button>
-                      </div>
-                      <div className="capitalize mb-2 font-medium">
+                      </div>                      <div className="capitalize mb-2 font-medium">
                         {address.type} Address
                       </div>
+                      {address.name && <p className="font-semibold">{address.name}</p>}
+                      {address.phone && <p className="mb-1">{address.phone}</p>}
                       <p>{address.street}</p>
-                      <p>{address.city}, {address.state} {address.pincode}</p>
+                      <p>{address.city}, {address.state} {address.zipCode || address.pincode}</p>
                     </div>
                   ))}
                 </div>

@@ -135,13 +135,11 @@ const Orders = () => {
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                 {order.createdAt}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                {order.customerName || 'N/A'}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                {formatCurrency(order.total)}
-              </td>              <td className="px-6 py-4 whitespace-nowrap">
+              </td>              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                {order.address?.name || order.customerName || 'N/A'}
+              </td>              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                {formatCurrency(order.finalAmount || order.totalAmount || 0)}
+              </td><td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
                     {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
@@ -228,19 +226,20 @@ const Orders = () => {
                     <span className="font-medium">Payment Method:</span> {selectedOrder.paymentMethod || 'N/A'}
                   </p>
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Customer Information</h4>
+                <div>                  <h4 className="text-sm font-medium text-gray-500">Customer Information</h4>
                   <p className="mt-2 text-sm text-gray-900">
-                    <span className="font-medium">Name:</span> {selectedOrder.customerName || 'N/A'}
+                    <span className="font-medium">Name:</span> {selectedOrder.address?.name || selectedOrder.customerName || 'N/A'}
                   </p>
                   <p className="mt-1 text-sm text-gray-900">
                     <span className="font-medium">Email:</span> {selectedOrder.customerEmail || 'N/A'}
                   </p>
                   <p className="mt-1 text-sm text-gray-900">
-                    <span className="font-medium">Phone:</span> {selectedOrder.customerPhone || 'N/A'}
+                    <span className="font-medium">Phone:</span> {selectedOrder.address?.phone || selectedOrder.customerPhone || 'N/A'}
                   </p>
                   <p className="mt-1 text-sm text-gray-900">
-                    <span className="font-medium">Address:</span> {selectedOrder.shippingAddress || 'N/A'}
+                    <span className="font-medium">Address:</span> {selectedOrder.address ? 
+                      `${selectedOrder.address.street}, ${selectedOrder.address.city}, ${selectedOrder.address.state} ${selectedOrder.address.zipCode}` : 
+                      selectedOrder.shippingAddress || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -291,14 +290,11 @@ const Orders = () => {
                     )}
                   </tbody>
                 </table>
-              </div>
-
-              <div className="mt-4 text-right">
-                <p className="text-sm text-gray-700">Subtotal: ${selectedOrder.subtotal?.toFixed(2) || '0.00'}</p>
-                <p className="text-sm text-gray-700">Tax: ${selectedOrder.tax?.toFixed(2) || '0.00'}</p>
-                <p className="text-sm text-gray-700">Shipping: ${selectedOrder.shipping?.toFixed(2) || '0.00'}</p>
+              </div>              <div className="mt-4 text-right">
+                <p className="text-sm text-gray-700">Subtotal: {formatCurrency(selectedOrder.totalAmount || 0)}</p>
+                <p className="text-sm text-gray-700">Delivery Fee: {formatCurrency(selectedOrder.deliveryFee || 0)}</p>
                 <p className="text-base font-medium text-gray-900 mt-2">
-                  Total: ${selectedOrder.totalAmount?.toFixed(2) || '0.00'}
+                  Total: {formatCurrency(selectedOrder.finalAmount || selectedOrder.totalAmount || 0)}
                 </p>
               </div>
             </div>
