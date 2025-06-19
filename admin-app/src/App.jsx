@@ -3,6 +3,8 @@ import { AuthProvider } from './contexts/AuthContext/index.js';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import ErrorBoundary from './components/ErrorBoundary';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Auth pages
 import AdminLogin from './pages/auth/AdminLogin';
@@ -38,6 +40,18 @@ function App() {
           {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
       </AuthProvider>
     </ErrorBoundary>
   );

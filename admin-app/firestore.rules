@@ -7,13 +7,14 @@ service cloud.firestore {
       return request.auth != null && 
              exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
-    
-    // Admins collection
+      // Admins collection
     match /admins/{userId} {
-      // Allow read if the document belongs to the authenticated user
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow any admin to read all admin documents
+      allow read: if isAdmin();
       // Allow write only during creation (signup) or if updating own document
       allow create, update: if request.auth != null && request.auth.uid == userId;
+      // Allow deletion only of own document
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
     
     // Orders collection

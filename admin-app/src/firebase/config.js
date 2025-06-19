@@ -45,15 +45,11 @@ if (!userFirebaseConfig.projectId) {
 const adminApp = initializeApp(adminFirebaseConfig);
 const userApp = initializeApp(userFirebaseConfig, 'user-app'); // Second parameter is a unique app name
 
-// Initialize Auth with admin app
+// Initialize services
 const auth = getAuth(adminApp);
-
-// Initialize Firestore with both apps
 const db = getFirestore(adminApp);
-const userDb = getFirestore(userApp); // For accessing user orders
-
-// Initialize Storage with admin app
+const userDb = getFirestore(userApp);
 const storage = getStorage(adminApp);
 
-export { auth, db, userDb, storage };
-export default adminApp;
+// Export everything needed
+export { auth, db, userDb, storage, adminApp, userApp };

@@ -1,68 +1,90 @@
-import { useState, useEffect } from 'react';
-import { collection, getDocs, doc, deleteDoc, query, orderBy, where } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+import { useState, useEffect, useContext } from 'react';
+import { collection, getDocs, doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../../firebase/config';
+import { toast } from 'react-toastify';
+import { AuthContext } from '../../contexts/AuthContext';
 
 const Users = () => {
+  const { currentUser, loading: authLoading } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filter, setFilter] = useState('all'); // 'all', 'active', 'inactive'
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Fetch users
+  const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
+      if (authLoading) return; // Wait for auth to initialize
+      
+      if (!currentUser) {
+        setError('Please log in to view admin users');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        let usersQuery;
+        setError(null);
+
+        // First, get the current user's admin document (which we have permission to read)
+        const currentUserDoc = await getDoc(doc(db, 'admins', currentUser.uid));
         
-        if (filter === 'active') {
-          usersQuery = query(
-            collection(db, 'users'), 
-            where('isActive', '==', true),
-            orderBy('createdAt', 'desc')
-          );
-        } else if (filter === 'inactive') {
-          usersQuery = query(
-            collection(db, 'users'), 
-            where('isActive', '==', false),
-            orderBy('createdAt', 'desc')
-          );
-        } else {
-          usersQuery = query(
-            collection(db, 'users'), 
-            orderBy('createdAt', 'desc')
-          );
+        if (!currentUserDoc.exists()) {
+          setError('Access denied. Admin privileges required.');
+          setLoading(false);
+          return;
+        }        // Since we're an admin, we can now fetch all admin documents
+        const adminsRef = collection(db, 'admins');
+        const snapshot = await getDocs(adminsRef);
+        
+        if (snapshot.empty) {
+          setUsers([]);
+          return;
         }
+
+        const usersData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            displayName: data.displayName || 'N/A',
+            email: data.email || 'N/A',
+            role: data.role || 'admin',
+            isActive: typeof data.isActive === 'boolean' ? data.isActive : true,
+            createdAt: data.createdAt?.toDate?.() ? data.createdAt.toDate().toLocaleDateString() : 'N/A',
+            lastLogin: data.lastLogin?.toDate?.() ? data.lastLogin.toDate().toLocaleDateString() : 'N/A',
+            permissions: data.permissions || []
+          };
+        });
+          // Filter users if needed
+        const filteredData = filter === 'all' 
+          ? usersData 
+          : usersData.filter(user => user.isActive === (filter === 'active'));
         
-        const snapshot = await getDocs(usersQuery);
-        
-        const usersData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate().toLocaleDateString() || 'N/A',
-          lastLoginAt: doc.data().lastLoginAt?.toDate().toLocaleDateString() || 'N/A'
-        }));
-        
-        setUsers(usersData);
+        setUsers(filteredData);
       } catch (err) {
-        console.error('Error fetching users:', err);
-        setError('Failed to load users. Please try again later.');
+        console.error('Error fetching admin users:', err);
+        const errorMessage = 'Failed to load admin users. Please try again later.';
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          toastId: 'fetch-users-error' // Prevent duplicate toasts
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchUsers();
-  }, [filter]);
+  }, [filter, currentUser, authLoading]);
 
   // Filter users based on search term
   const filteredUsers = users.filter(user => {
+    const searchLower = searchTerm.toLowerCase();
     return searchTerm === '' || 
-      (user.displayName && user.displayName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
+           (user.displayName && user.displayName.toLowerCase().includes(searchLower)) ||
+           (user.email && user.email.toLowerCase().includes(searchLower)) ||
+           (user.role && user.role.toLowerCase().includes(searchLower));
   });
 
   // View user details
@@ -70,360 +92,225 @@ const Users = () => {
     setSelectedUser(user);
     setIsModalOpen(true);
   };
-
   // Delete user
-  const handleDeleteUser = async (userId) => {
-    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      try {
-        await deleteDoc(doc(db, 'users', userId));
-        
-        // Update local state
-        setUsers(users.filter(user => user.id !== userId));
-        
-        // Close modal if the deleted user is the selected user
-        if (selectedUser && selectedUser.id === userId) {
-          setIsModalOpen(false);
-          setSelectedUser(null);
-        }
-      } catch (err) {
-        console.error('Error deleting user:', err);
-        setError('Failed to delete user. Please try again.');
+  const handleDeleteUser = async (userId) => {    if (!currentUser) {
+      toast.error('You must be logged in to perform this action', {
+        toastId: 'auth-error'
+      });
+      return;
+    }
+
+    // Can only delete your own account (matches Firestore security rules)
+    if (userId !== currentUser.uid) {
+      toast.error('For security reasons, admins can only delete their own account', {
+        toastId: 'delete-permission-error'
+      });
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete your admin account? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'admins', userId));
+      setUsers(users.filter(u => u.id !== userId));
+      
+      if (selectedUser?.id === userId) {
+        setIsModalOpen(false);
+        setSelectedUser(null);
       }
+
+      toast.success('Admin account deleted successfully', {
+        toastId: 'delete-success'
+      });
+    } catch (err) {
+      console.error('Error deleting admin account:', err);
+      toast.error('Failed to delete admin account. Please try again.', {
+        toastId: 'delete-error'
+      });
     }
   };
 
+  // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-red-500 text-lg mb-4">{error}</div>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (!loading && users.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-gray-500 text-lg mb-4">No admin users found</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-md">
-          {error}
-        </div>
-      )}
-
-      {/* Filter and Search */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-              filter === 'all'
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            All Users
-          </button>
-          <button
-            onClick={() => setFilter('active')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-              filter === 'active'
-                ? 'bg-green-100 text-green-700'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Active
-          </button>
-          <button
-            onClick={() => setFilter('inactive')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-              filter === 'inactive'
-                ? 'bg-red-100 text-red-700'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Inactive
-          </button>
-        </div>
-        <div className="relative">
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">Admin User Management</h1>
+        
+        {/* Filters and Search */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div className="flex gap-4">
+            <button
+              className={`px-4 py-2 rounded ${filter === 'all' ? 'bg-primary text-white' : 'bg-gray-200'}`}
+              onClick={() => setFilter('all')}
+            >
+              All
+            </button>
+            <button
+              className={`px-4 py-2 rounded ${filter === 'active' ? 'bg-primary text-white' : 'bg-gray-200'}`}
+              onClick={() => setFilter('active')}
+            >
+              Active
+            </button>
+            <button
+              className={`px-4 py-2 rounded ${filter === 'inactive' ? 'bg-primary text-white' : 'bg-gray-200'}`}
+              onClick={() => setFilter('inactive')}
+            >
+              Inactive
+            </button>
+          </div>
           <input
             type="text"
-            placeholder="Search users..."
+            placeholder="Search admin users..."
+            className="w-full md:w-64 px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </button>
-          )}
         </div>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Joined
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Login
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredUsers.map((user) => (
+              <tr key={user.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{user.displayName}</div>
+                      <div className="text-sm text-gray-500">{user.email}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{user.role}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    user.isActive 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {user.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {user.createdAt}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {user.lastLogin}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    onClick={() => handleViewDetails(user)}
+                    className="text-indigo-600 hover:text-indigo-900 mr-4"
+                  >
+                    View
+                  </button>
+                  <button
+                    onClick={() => handleDeleteUser(user.id)}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                          {user.photoURL ? (
-                            <img 
-                              src={user.photoURL} 
-                              alt={user.displayName || user.email} 
-                              className="h-10 w-10 rounded-full"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = 'https://via.placeholder.com/40?text=User';
-                              }}
-                            />
-                          ) : (
-                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                          )}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.displayName || 'No Name'}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {user.id.substring(0, 8)}...
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.createdAt}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.lastLoginAt}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        user.isActive === false
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {user.isActive === false ? 'Inactive' : 'Active'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleViewDetails(user)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
-                    No users found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* User Details Modal */}
       {isModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">User Details</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="px-6 py-4">
-              <div className="flex items-center mb-6">
-                <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                  {selectedUser.photoURL ? (
-                    <img 
-                      src={selectedUser.photoURL} 
-                      alt={selectedUser.displayName || selectedUser.email} 
-                      className="h-20 w-20 rounded-full"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://via.placeholder.com/80?text=User';
-                      }}
-                    />
-                  ) : (
-                    <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  )}
-                </div>
-                <div className="ml-6">
-                  <h4 className="text-xl font-medium text-gray-900">
-                    {selectedUser.displayName || 'No Name'}
-                  </h4>
-                  <p className="text-sm text-gray-500">
-                    {selectedUser.email}
-                  </p>
-                  <div className="mt-2">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      selectedUser.isActive === false
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {selectedUser.isActive === false ? 'Inactive' : 'Active'}
-                    </span>
-                  </div>
-                </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-lg w-full mx-4">
+            <h2 className="text-xl font-bold mb-4">Admin User Details</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="font-medium">Name:</label>
+                <p>{selectedUser.displayName}</p>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h5 className="text-sm font-medium text-gray-500 mb-2">User Information</h5>
-                  <div className="space-y-2">
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">User ID:</span> {selectedUser.id}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">Phone:</span> {selectedUser.phoneNumber || 'Not provided'}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">Joined:</span> {selectedUser.createdAt}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">Last Login:</span> {selectedUser.lastLoginAt}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <h5 className="text-sm font-medium text-gray-500 mb-2">Address Information</h5>
-                  <div className="space-y-2">
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">Address:</span> {selectedUser.address || 'Not provided'}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">City:</span> {selectedUser.city || 'Not provided'}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">State:</span> {selectedUser.state || 'Not provided'}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium text-gray-700">Zip Code:</span> {selectedUser.zipCode || 'Not provided'}
-                    </p>
-                  </div>
-                </div>
+              <div>
+                <label className="font-medium">Email:</label>
+                <p>{selectedUser.email}</p>
               </div>
-
-              <div className="mt-6">
-                <h5 className="text-sm font-medium text-gray-500 mb-2">Order History</h5>
-                <div className="border rounded-md overflow-hidden">
-                  {selectedUser.orderHistory && selectedUser.orderHistory.length > 0 ? (
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Order ID
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Total
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {selectedUser.orderHistory.map((order, index) => (
-                          <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {order.id.substring(0, 8)}...
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {order.date}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                                order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {order.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              ${order.total.toFixed(2)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              <div>
+                <label className="font-medium">Role:</label>
+                <p>{selectedUser.role}</p>
+              </div>
+              <div>
+                <label className="font-medium">Status:</label>
+                <p>{selectedUser.isActive ? 'Active' : 'Inactive'}</p>
+              </div>
+              <div>
+                <label className="font-medium">Created:</label>
+                <p>{selectedUser.createdAt}</p>
+              </div>
+              <div>
+                <label className="font-medium">Last Login:</label>
+                <p>{selectedUser.lastLogin}</p>
+              </div>
+              <div>
+                <label className="font-medium">Permissions:</label>
+                <ul className="list-disc list-inside">
+                  {selectedUser.permissions && selectedUser.permissions.length > 0 ? (
+                    selectedUser.permissions.map((permission, index) => (
+                      <li key={index}>{permission}</li>
+                    ))
                   ) : (
-                    <div className="px-6 py-4 text-center text-sm text-gray-500">
-                      No order history found.
-                    </div>
+                    <li>No specific permissions set</li>
                   )}
-                </div>
+                </ul>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+            <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
               >
                 Close
               </button>
