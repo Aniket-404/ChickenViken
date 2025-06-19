@@ -242,3 +242,22 @@ input:focus, textarea:focus, select:focus {
   background-color: #FFF8E6 !important;
   color: #B26B00 !important;
 }
+
+/* Footer styles */
+footer a {
+  transition: color 0.2s ease-in-out;
+}
+
+footer a:hover {
+  color: #F28B82;
+}
+
+@media (max-width: 768px) {
+  footer .container {
+    text-align: center;
+  }
+  
+  footer .grid {
+    gap: 2rem;
+  }
+}

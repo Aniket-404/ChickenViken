@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext/provider';
 import { useAuth } from './hooks/useAuth';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Products from './pages/Products';
@@ -26,8 +27,7 @@ function App() {
     <ErrorBoundary>
       <Router>
         <AuthProvider>
-          <CartProvider>
-            <div className="min-h-screen bg-gray-100">
+          <CartProvider>            <div className="min-h-screen bg-gray-100 flex flex-col">
               <Navbar />
               <main className="flex-grow">
                 <Routes>
@@ -55,6 +55,7 @@ function App() {
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </main>
+              <Footer />
             </div>
             <ToastContainer
               position="bottom-right"
