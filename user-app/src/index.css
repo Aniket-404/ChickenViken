@@ -7,15 +7,15 @@
 /* 
   Note: @reference directives have been removed as they're not compatible with Tailwind CSS v3.
   The following classes are used throughout the project:
-  - Background colors: bg-red-600, bg-red-700, bg-gray-100, bg-gray-200, bg-gray-50, bg-white
-  - Text colors/sizes: text-white, text-gray-800, text-red-600, text-red-800, text-gray-600, text-gray-700, text-sm, text-xl, text-2xl, text-3xl
+  - Background colors: bg-primary, bg-primary-hover, bg-primary-light, bg-gray-100, bg-gray-200, bg-gray-50, bg-white
+  - Text colors/sizes: text-white, text-gray-800, text-primary, text-primary-dark, text-gray-600, text-gray-700, text-sm, text-xl, text-2xl, text-3xl
   - Font weights: font-medium, font-semibold, font-bold
   - Spacing: px-4, py-2, p-4, ml-4, mb-4, mb-8, mb-1, mt-1, mt-8
-  - Borders/Rounding: rounded-md, rounded-lg, rounded-full, border, border-red-600, border-gray-300, border-b
-  - Interactions: hover:bg-red-700, hover:bg-gray-200, hover:bg-red-50, hover:text-red-800, hover:shadow-lg
+  - Borders/Rounding: rounded-standard, rounded-lg, rounded-full, border, border-primary, border-gray-300, border-b
+  - Interactions: hover:bg-primary-hover, hover:bg-gray-200, hover:bg-primary-light, hover:text-primary-dark, hover:shadow-lg
   - Transitions: transition-colors, transition-shadow, duration-300
-  - Effects: shadow-md, shadow-lg, overflow-hidden
-  - Focus states: focus:outline-none, focus:ring-2, focus:ring-red-500, focus:border-transparent
+  - Effects: shadow-card, shadow-lg, overflow-hidden
+  - Focus states: focus:outline-none, focus:ring-2, focus:ring-primary, focus:border-transparent
   - Dimensions: w-full, w-16, h-16
   - Layouts: flex, items-center, justify-between, justify-center, gap-4, flex-wrap
   - Containers: container, mx-auto, px-4, py-8, py-16
@@ -41,6 +41,41 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+}
+
+/* Form field styles */
+input, textarea, select {
+  background-color: white !important;
+  color: #1f2937 !important;
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+input::placeholder, textarea::placeholder {
+  color: rgba(242, 139, 130, 0.5);
+  opacity: 1;
+}
+
+input:focus::placeholder, textarea:focus::placeholder {
+  color: rgba(242, 139, 130, 0.7);
+}
+
+/* Dark mode placeholders */
+@media (prefers-color-scheme: dark) {
+  input::placeholder, textarea::placeholder {
+    color: rgba(242, 139, 130, 0.4);
+  }
+  
+  input:focus::placeholder, textarea:focus::placeholder {
+    color: rgba(242, 139, 130, 0.6);
+  }
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: #F28B82;
+  box-shadow: 0 0 0 3px rgba(242, 139, 130, 0.25);
 }
 
 /* Animation styles */
@@ -72,77 +107,99 @@ body {
   }
 }
 
+/* Skeleton loader animation */
+.skeleton {
+  background: linear-gradient(90deg, 
+    rgba(242, 139, 130, 0.1) 25%, 
+    rgba(242, 139, 130, 0.2) 50%, 
+    rgba(242, 139, 130, 0.1) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 @layer components {
   /* Custom button styles */
   .btn-primary {
-    background-color: #dc2626; /* bg-red-600 */
+    background-color: #F28B82; /* bg-primary */
     color: white;
-    padding: 0.5rem 1rem; /* px-4 py-2 */
-    border-radius: 0.375rem; /* rounded-md */
+    padding: 8px 16px; /* px-4 py-2 */
+    border-radius: 6px; /* rounded-standard */
     font-weight: 500; /* font-medium */
     transition-property: background-color; /* transition-colors */
     transition-duration: 300ms; /* duration-300 */
   }
   .btn-primary:hover {
-    background-color: #b91c1c; /* hover:bg-red-700 */
+    background-color: #E06666; /* hover:bg-primary-hover */
   }
 
   .btn-secondary {
-    background-color: #f3f4f6; /* bg-gray-100 */
-    color: #1f2937; /* text-gray-800 */
-    padding: 0.5rem 1rem; /* px-4 py-2 */
-    border-radius: 0.375rem; /* rounded-md */
+    background-color: transparent; /* bg-transparent */
+    color: #F28B82; /* text-primary */
+    border: 1px solid #F28B82; /* border-primary */
+    padding: 8px 16px; /* px-4 py-2 */
+    border-radius: 6px; /* rounded-standard */
     font-weight: 500; /* font-medium */
-    transition-property: background-color; /* transition-colors */
+    transition-property: all; /* transition-all */
     transition-duration: 300ms; /* duration-300 */
   }
   .btn-secondary:hover {
-    background-color: #e5e7eb; /* hover:bg-gray-200 */
+    background-color: #FFF4F3; /* hover:bg-primary-light */
   }
 
   .btn-outlined {
-    border: 1px solid #dc2626; /* border border-red-600 */
-    color: #dc2626; /* text-red-600 */
-    padding: 0.5rem 1rem; /* px-4 py-2 */
-    border-radius: 0.375rem; /* rounded-md */
+    border: 1px solid #F28B82; /* border border-primary */
+    color: #F28B82; /* text-primary */
+    padding: 8px 16px; /* px-4 py-2 */
+    border-radius: 6px; /* rounded-standard */
     font-weight: 500; /* font-medium */
     transition-property: background-color; /* transition-colors */
     transition-duration: 300ms; /* duration-300 */
   }
   .btn-outlined:hover {
-    background-color: #fef2f2; /* hover:bg-red-50 */
+    background-color: #FEECEA; /* hover:bg-primary-light */
   }
 
   /* Card styles */
   .card {
     background-color: white; /* bg-white */
-    border-radius: 0.5rem; /* rounded-lg */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+    border-radius: 6px; /* rounded-standard */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* shadow-card */
     overflow: hidden;
     transition-property: box-shadow; /* transition-shadow */
     transition-duration: 300ms; /* duration-300 */
   }
   .card:hover {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* hover:shadow-lg */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* hover:shadow-lg */
   }
 
   /* Form styles */
   .form-input {
     width: 100%; /* w-full */
-    padding: 0.5rem 0.75rem; /* px-3 py-2 */
-    border-radius: 0.375rem; /* rounded-md */
-    border: 1px solid #d1d5db; /* border border-gray-300 */
+    padding: 8px 12px; /* px-3 py-2 */
+    border-radius: 6px; /* rounded-standard */
+    border: 1px solid #e5e7eb; /* border border-gray-300 */
     background-color: white;
     color: #111827; /* text-gray-900 */
   }
   .form-input::placeholder {
-    color: #9ca3af; /* text-gray-400 */
+    color: #A0A0A0; /* placeholder */
     opacity: 1;
   }
   .form-input:focus {
     outline: none; /* focus:outline-none */
-    border-color: transparent; /* focus:border-transparent */
-    box-shadow: 0 0 0 2px #ef4444; /* focus:ring-2 focus:ring-red-500 */
+    border-color: #F28B82; /* border-primary */
+    box-shadow: 0 0 0 3px rgba(242, 139, 130, 0.25); /* focus:shadow-focus */
   }
 
   .form-label {
@@ -150,12 +207,38 @@ body {
     font-size: 0.875rem; /* text-sm */
     font-weight: 500; /* font-medium */
     color: #374151; /* text-gray-700 */
-    margin-bottom: 0.25rem; /* mb-1 */
+    margin-bottom: 4px; /* mb-1 */
   }
 
   .form-error {
     font-size: 0.875rem; /* text-sm */
-    color: #dc2626; /* text-red-600 */
-    margin-top: 0.25rem; /* mt-1 */
+    color: #D93025; /* text-primary-dark */
+    margin-top: 4px; /* mt-1 */
   }
+}
+
+/* Toast notification styling */
+.Toastify__toast {
+  border-radius: 6px !important;
+  padding: 16px !important;
+}
+
+.Toastify__toast--success {
+  background-color: #EEFBF4 !important;
+  color: #2B8A5C !important;
+}
+
+.Toastify__toast--error {
+  background-color: #FEECEA !important;
+  color: #D93025 !important;
+}
+
+.Toastify__toast--info {
+  background-color: #E6F2FF !important;
+  color: #1E429F !important;
+}
+
+.Toastify__toast--warning {
+  background-color: #FFF8E6 !important;
+  color: #B26B00 !important;
 }

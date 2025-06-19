@@ -5,165 +5,6 @@ import { db, auth } from '../../firebase/config';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../../contexts/AuthContext';
 
-const AddAdminModal = ({ isOpen, onClose, onAdd }) => {
-  const { currentUser } = useContext(AuthContext);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    displayName: '',
-    permissions: []
-  });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (loading) return;
-
-    try {
-      setLoading(true);
-
-      // Check if current user has permission to create admins
-      const currentUserDoc = await getDoc(doc(db, 'admins', currentUser.uid));
-      if (!currentUserDoc.exists()) {
-        throw new Error('Access denied. Admin privileges required.');
-      }
-
-      const currentUserData = currentUserDoc.data();
-      const hasUsersPermission = currentUserData.permissions?.includes('users');
-      
-      if (!hasUsersPermission) {
-        throw new Error('Access denied. You do not have permission to create admin users.');
-      }
-
-      // Create the user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-
-      // Create the admin document in Firestore      // Get creator's data to check if they are superadmin
-      const creatorDoc = await getDoc(doc(db, 'admins', currentUser.uid));
-      const creatorData = creatorDoc.data();
-      
-      const adminData = {
-        email: formData.email,
-        displayName: formData.displayName,
-        // If creator is superadmin, use selected permissions, otherwise clear them
-        permissions: creatorData.role === 'superadmin' ? formData.permissions : [],
-        isActive: true,
-        role: 'admin', // New users can only be regular admins
-        createdAt: new Date(),
-        lastLogin: null
-      };
-
-      await setDoc(doc(db, 'admins', userCredential.user.uid), adminData);
-
-      toast.success('Admin user created successfully');
-      onAdd();
-      onClose();
-    } catch (error) {
-      console.error('Error creating admin:', error);
-      toast.error(error.message || 'Failed to create admin user');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div className="mt-3">
-          <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Create New Admin</h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Display Name</label>
-              <input
-                type="text"
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                value={formData.displayName}
-                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Permissions</label>
-              <div className="mt-2 space-y-2">                {['products', 'orders', 'users', 'settings'].map(permission => {
-                  // Check if current user is superadmin
-                  const isSuperAdmin = currentUser?.uid === 'RXEQ16eMsfW5WrEnxReqVwI3JmE2';
-                  
-                  // Only show checkboxes if user is superadmin
-                  if (!isSuperAdmin) {
-                    return null;
-                  }
-
-                  return (
-                    <label key={permission} className="inline-flex items-center mr-4">
-                      <input
-                        type="checkbox"
-                        className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        checked={formData.permissions.includes(permission)}
-                        onChange={(e) => {
-                          const newPermissions = e.target.checked
-                            ? [...formData.permissions, permission]
-                            : formData.permissions.filter(p => p !== permission);
-                          setFormData({ ...formData, permissions: newPermissions });
-                        }}
-                      />
-                      <span className="ml-2 text-sm text-gray-700 capitalize">{permission}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3 mt-5">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
-                  loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-              >
-                {loading ? 'Creating...' : 'Create Admin'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const Users = () => {
   const { currentUser, loading: authLoading } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
@@ -171,9 +12,18 @@ const Users = () => {
   const [error, setError] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [hasUsersPermission, setHasUsersPermission] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');  // Function to check if current user has users permission, memoized with useCallback
+  const [searchTerm, setSearchTerm] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    displayName: '',
+    permissions: []
+  });
+  const [loadingAction, setLoadingAction] = useState(false);
+
+  // Function to check if current user has users permission, memoized with useCallback
   const checkUsersPermission = useCallback(async () => {
     if (!currentUser) return false;
     
@@ -276,12 +126,6 @@ const Users = () => {
            (user.role && user.role.toLowerCase().includes(searchLower));
   });
 
-  // View user details
-  const handleViewDetails = (user) => {
-    setSelectedUser(user);
-    setIsModalOpen(true);
-  };
-
   // Delete user
   const handleDeleteUser = async (userId) => {
     if (!currentUser) {
@@ -292,6 +136,7 @@ const Users = () => {
     }
 
     try {
+      setLoadingAction(true);
       // Check if the user has 'users' permission
       const currentUserDoc = await getDoc(doc(db, 'admins', currentUser.uid));
       if (!currentUserDoc.exists()) {
@@ -331,6 +176,64 @@ const Users = () => {
     } catch (err) {
       console.error('Error deleting admin account:', err);
       toast.error('Failed to delete admin account. Please try again.');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  // Create admin
+  const handleAddAdmin = async (e) => {
+    e.preventDefault();
+    if (loadingAction) return;
+
+    try {
+      setLoadingAction(true);
+
+      // Check if current user has permission to create admins
+      const currentUserDoc = await getDoc(doc(db, 'admins', currentUser.uid));
+      if (!currentUserDoc.exists()) {
+        throw new Error('Access denied. Admin privileges required.');
+      }
+
+      const currentUserData = currentUserDoc.data();
+      const hasUsersPermission = currentUserData.permissions?.includes('users');
+      
+      if (!hasUsersPermission) {
+        throw new Error('Access denied. You do not have permission to create admin users.');
+      }
+
+      // Create the user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+
+      // Create the admin document in Firestore      // Get creator's data to check if they are superadmin
+      const creatorDoc = await getDoc(doc(db, 'admins', currentUser.uid));
+      const creatorData = creatorDoc.data();
+      
+      const adminData = {
+        email: formData.email,
+        displayName: formData.displayName,
+        // If creator is superadmin, use selected permissions, otherwise clear them
+        permissions: creatorData.role === 'superadmin' ? formData.permissions : [],
+        isActive: true,
+        role: 'admin', // New users can only be regular admins
+        createdAt: new Date(),
+        lastLogin: null
+      };
+
+      await setDoc(doc(db, 'admins', userCredential.user.uid), adminData);
+
+      toast.success('Admin user created successfully');
+      setShowAddModal(false);
+      window.location.reload();
+    } catch (error) {
+      console.error('Error creating admin:', error);
+      toast.error(error.message || 'Failed to create admin user');
+    } finally {
+      setLoadingAction(false);
     }
   };
 
@@ -347,10 +250,10 @@ const Users = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="text-red-500 text-lg mb-4">{error}</div>
+        <div className="text-primary-dark text-lg mb-4">{error}</div>
         <button 
           onClick={() => window.location.reload()} 
-          className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark"
+          className="px-4 py-2 bg-primary text-white rounded-standard hover:bg-primary-hover transition-colors"
         >
           Retry
         </button>
@@ -359,97 +262,192 @@ const Users = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">Admin User Management</h1>
-          {hasUsersPermission && (
-            <button
-              onClick={() => setIsAddAdminModalOpen(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-            >
-              Add New Admin
-            </button>
-          )}
-        </div>
-        
-        {/* Search */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Search admins..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </div>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold">User Management</h1>
+        {hasUsersPermission && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <span>Add New Admin</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
+      </div>
 
-        {/* User list */}
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      <div className="mb-4">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search by name, email, or role"
+          className="w-full p-2 border rounded-md focus:ring-1 focus:ring-primary focus:outline-none"
+        />
+      </div>
+
+      <div className="table-container">
+        <div className="table-responsive">
+          <table className="admin-table">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th>Email</th>
+                <th>Display Name</th>
+                <th>Role</th>
+                <th>Permissions</th>
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900">{user.displayName}</div>
-                    <div className="text-sm text-gray-500">{user.role}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {user.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.createdAt}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.lastLogin}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleViewDetails(user)}
-                      className="text-blue-600 hover:text-blue-900 mr-4"
-                    >
-                      View
-                    </button>
-                    {currentUser.uid === user.id && (
+            <tbody>
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <tr key={user.id}>
+                    <td className="cell-main">{user.email}</td>
+                    <td>{user.displayName || '-'}</td>
+                    <td>
+                      <span className="status-badge status-badge-completed">
+                        {user.role || 'Admin'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex flex-wrap gap-1">
+                        {user.permissions?.map((permission) => (
+                          <span
+                            key={permission}
+                            className="status-badge status-badge-pending"
+                          >
+                            {permission}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td>
                       <button
                         onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-600 hover:text-red-900"
+                        className="table-action-btn table-action-btn-danger"
+                        disabled={loading}
                       >
                         Delete
                       </button>
-                    )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="px-4 py-3 text-center text-gray-500">
+                    No admin users found
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
       {/* Add Admin Modal */}
-      <AddAdminModal
-        isOpen={isAddAdminModalOpen}
-        onClose={() => setIsAddAdminModalOpen(false)}
-        onAdd={() => {
-          // Refresh the users list after adding a new admin
-          window.location.reload();
-        }}
-      />
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="card max-w-md w-full">
+            <h2 className="text-xl font-semibold mb-4">Add New Admin</h2>
+            <form onSubmit={handleAddAdmin}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    className="w-full"
+                    placeholder="admin@example.com"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    className="w-full"
+                    placeholder="Minimum 6 characters"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.displayName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, displayName: e.target.value })
+                    }
+                    className="w-full"
+                    placeholder="John Doe"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Permissions
+                  </label>
+                  <div className="space-y-2">
+                    {['users', 'products', 'orders', 'inventory'].map((permission) => (
+                      <label key={permission} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.permissions.includes(permission)}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setFormData({
+                              ...formData,
+                              permissions: isChecked
+                                ? [...formData.permissions, permission]
+                                : formData.permissions.filter((p) => p !== permission),
+                            });
+                          }}
+                          className="rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm capitalize">{permission}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={loading}
+                >
+                  {loading ? 'Creating...' : 'Create Admin'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* User Details Modal */}
       {isModalOpen && selectedUser && (

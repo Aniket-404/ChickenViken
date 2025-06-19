@@ -6,20 +6,17 @@ import {
   updateDoc, 
   deleteDoc, 
   doc, 
-  serverTimestamp,
-  query,
-  orderBy 
+  serverTimestamp
 } from 'firebase/firestore';
-import { db } from '../../firebase/config';
-import { uploadImage, deleteImage, getPublicIdFromUrl } from '../../services/cloudinary';
-import { formatCurrency, parseAmount } from '../../utils/currency';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../../firebase/config';
+import { toast } from 'react-toastify';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentProduct, setCurrentProduct] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -30,25 +27,21 @@ const Products = () => {
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const productsQuery = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
-        const snapshot = await getDocs(productsQuery);
-        
-        const productsData = snapshot.docs.map(doc => ({
+        const querySnapshot = await getDocs(collection(db, 'products'));
+        const productsData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
         setProducts(productsData);
       } catch (err) {
         console.error('Error fetching products:', err);
-        setError('Failed to load products. Please try again later.');
+        toast.error('Failed to load products');
       } finally {
         setLoading(false);
       }
@@ -70,21 +63,7 @@ const Products = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Check file size (limit to 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size should be less than 5MB');
-        return;
-      }
-
-      // Check file type
-      if (!file.type.match('image.*')) {
-        setError('Please select an image file');
-        return;
-      }
-
       setImageFile(file);
-      
-      // Create a preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -93,114 +72,78 @@ const Products = () => {
     }
   };
 
-  // Open modal for adding a new product
-  const handleAddProduct = () => {
-    setCurrentProduct(null);
-    setFormData({
-      name: '',
-      description: '',
-      price: '',
-      category: '',
-      imageUrl: '',
-      inStock: true
-    });
-    setImageFile(null);
-    setImagePreview('');
-    setIsModalOpen(true);
-  };
-
   // Open modal for editing a product
   const handleEditProduct = (product) => {
-    setCurrentProduct(product);
+    setEditingProduct(product);
     setFormData({
       name: product.name || '',
       description: product.description || '',
-      price: product.price || '',
+      price: product.price?.toString() || '',
       category: product.category || '',
       imageUrl: product.imageUrl || '',
-      inStock: product.inStock !== false
+      inStock: product.inStock ?? true
     });
-    setImageFile(null);
     setImagePreview(product.imageUrl || '');
-    setIsModalOpen(true);
+    setShowAddModal(true);
+  };
+
+  // Handle product deletion
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'products', productId));
+      setProducts(prev => prev.filter(p => p.id !== productId));
+      toast.success('Product deleted successfully');
+    } catch (err) {
+      console.error('Error deleting product:', err);
+      toast.error('Failed to delete product');
+    }
   };
 
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
     
     try {
-      setIsSubmitting(true);
-      setError(null);
-      
-      // Validate form
-      if (!formData.name.trim()) {
-        throw new Error('Product name is required');
-      }
-      
-      if (!formData.price || isNaN(parseFloat(formData.price))) {
-        throw new Error('Valid price is required');
-      }
-      
       let imageUrl = formData.imageUrl;
-        // If there's a new image file, upload it to Cloudinary
-      if (imageFile) {
-        try {
-          // Upload the file to Cloudinary
-          imageUrl = await uploadImage(imageFile);
-          
-          // If updating and there was a previous image, delete it from Cloudinary
-          if (currentProduct?.imageUrl) {
-            try {
-              const oldPublicId = getPublicIdFromUrl(currentProduct.imageUrl);
-              if (oldPublicId) {
-                await deleteImage(oldPublicId);
-              }
-            } catch (err) {
-              console.warn('Could not delete old image:', err);
-            }
-          }
-        } catch (uploadError) {
-          console.error('Error uploading image:', uploadError);
-          throw new Error('Failed to upload image. Please try again.');
-        }
-      }
       
+      // If there's a new image file, upload it to Firebase Storage
+      if (imageFile) {
+        const storageRef = ref(storage, `products/${Date.now()}_${imageFile.name}`);
+        const snapshot = await uploadBytes(storageRef, imageFile);
+        imageUrl = await getDownloadURL(snapshot.ref);
+      }
+
       const productData = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        price: parseAmount(formData.price),
-        category: formData.category.trim(),
+        ...formData,
+        price: parseFloat(formData.price),
         imageUrl,
-        inStock: formData.inStock,
         updatedAt: serverTimestamp()
       };
-      
-      if (currentProduct) {
+
+      if (editingProduct) {
         // Update existing product
-        await updateDoc(doc(db, 'products', currentProduct.id), productData);
-        
-        // Update local state
-        setProducts(products.map(p => 
-          p.id === currentProduct.id ? { ...p, ...productData } : p
+        await updateDoc(doc(db, 'products', editingProduct.id), productData);
+        setProducts(prev => prev.map(p => 
+          p.id === editingProduct.id ? { ...p, ...productData } : p
         ));
+        toast.success('Product updated successfully');
       } else {
         // Add new product
-        const newProductData = {
+        const docRef = await addDoc(collection(db, 'products'), {
           ...productData,
-          createdAt: serverTimestamp(),
-          orderCount: 0
-        };
-        
-        const docRef = await addDoc(collection(db, 'products'), newProductData);
-        
-        // Update local state
-        setProducts([{ id: docRef.id, ...newProductData }, ...products]);
+          createdAt: serverTimestamp()
+        });
+        setProducts(prev => [...prev, { id: docRef.id, ...productData }]);
+        toast.success('Product added successfully');
       }
-      
+
       // Close modal and reset form
-      setIsModalOpen(false);
+      setShowAddModal(false);
+      setEditingProduct(null);
       setFormData({
         name: '',
         description: '',
@@ -213,156 +156,116 @@ const Products = () => {
       setImagePreview('');
     } catch (err) {
       console.error('Error saving product:', err);
-      setError(err.message || 'Failed to save product. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Handle product deletion
-  const handleDeleteProduct = async (productId, imageUrl) => {
-    if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
-      try {
-        await deleteDoc(doc(db, 'products', productId));
-          // Delete image from Cloudinary if it exists
-        if (imageUrl) {
-          try {
-            const publicId = getPublicIdFromUrl(imageUrl);
-            if (publicId) {
-              await deleteImage(publicId);
-            }
-          } catch (err) {
-            console.warn('Could not delete image:', err);
-          }
-        }
-        
-        // Update local state
-        setProducts(products.filter(p => p.id !== productId));
-      } catch (err) {
-        console.error('Error deleting product:', err);
-        setError('Failed to delete product. Please try again.');
-      }
+      toast.error('Failed to save product');
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="skeleton h-12 w-12 rounded-full"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Product Management</h1>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold">Products</h1>
         <button
-          onClick={handleAddProduct}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onClick={() => setShowAddModal(true)}
+          className="btn-primary flex items-center gap-2"
         >
-          Add New Product
+          <span>Add New Product</span>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+          </svg>
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-md">
-          {error}
+      <div className="table-container">
+        <div className="table-responsive">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((product) => (
+                <tr key={product.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="w-12 h-12 rounded-lg object-cover"
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/300x200?text=No+Image&bgcolor=F28B82&color=FFFFFF';
+                        }}
+                      />
+                      <div>
+                        <div className="cell-main">{product.name}</div>
+                        <div className="cell-secondary">ID: {product.id.substring(0, 8)}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="status-badge status-badge-pending">
+                      {product.category || 'Uncategorized'}
+                    </span>
+                  </td>
+                  <td className="cell-main">{`₹${product.price.toFixed(2)}`}</td>
+                  <td>{product.stock || 0}</td>
+                  <td>
+                    <span 
+                      className={`status-badge ${
+                        product.isAvailable
+                          ? 'status-badge-completed'
+                          : 'status-badge-cancelled'
+                      }`}
+                    >
+                      {product.isAvailable ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditProduct(product)}
+                        className="table-action-btn table-action-btn-primary"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProduct(product.id, product.imageUrl)}
+                        className="table-action-btn table-action-btn-danger"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
-
-      {/* Products Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {products.length > 0 ? (
-          products.map((product) => (
-            <div key={product.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="h-48 bg-gray-200 relative">
-                {product.imageUrl ? (
-                  <img 
-                    src={product.imageUrl} 
-                    alt={product.name} 
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://via.placeholder.com/300x200?text=No+Image';
-                    }}
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gray-100 text-gray-400">
-                    No Image
-                  </div>
-                )}
-                {product.inStock === false && (
-                  <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 text-xs rounded">
-                    Out of Stock
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className="text-lg font-medium text-gray-900 truncate">{product.name}</h3>
-                <p className="text-sm text-gray-500 mt-1 line-clamp-2">{product.description}</p>
-                <div className="mt-2 flex justify-between items-center">
-                  <span className="text-lg font-bold text-gray-900">{formatCurrency(product.price)}</span>
-                  <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    {product.category || 'Uncategorized'}
-                  </span>
-                </div>
-                <div className="mt-4 flex space-x-2">
-                  <button
-                    onClick={() => handleEditProduct(product)}
-                    className="flex-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteProduct(product.id, product.imageUrl)}
-                    className="flex-1 px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-12 bg-white rounded-lg border border-gray-200">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1}
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No products</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by creating a new product.</p>
-            <div className="mt-6">
-              <button
-                onClick={handleAddProduct}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Add Product
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Product Modal */}
-      {isModalOpen && (
+      {showAddModal && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
-                {currentProduct ? 'Edit Product' : 'Add New Product'}
+                {editingProduct ? 'Edit Product' : 'Add New Product'}
               </h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => setShowAddModal(false)}
                 className="text-gray-400 hover:text-gray-500"
               >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -372,15 +275,9 @@ const Products = () => {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="px-6 py-4">
-                {error && (
-                  <div className="mb-4 bg-red-50 text-red-600 p-4 rounded-md">
-                    {error}
-                  </div>
-                )}
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="name" className="form-label">
                       Product Name*
                     </label>                    <input
                       type="text"
@@ -388,7 +285,7 @@ const Products = () => {
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-300 placeholder-gray-500"
+                      className="form-input"
                       required
                     />
                   </div>
@@ -490,21 +387,16 @@ const Products = () => {
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 mr-2"
+                  onClick={() => setShowAddModal(false)}
+                  className="admin-btn-secondary mr-2"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className={`px-4 py-2 rounded-md text-white ${
-                    isSubmitting
-                      ? 'bg-blue-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
+                  className="admin-btn-primary"
                 >
-                  {isSubmitting ? 'Saving...' : (currentProduct ? 'Update Product' : 'Add Product')}
+                  {editingProduct ? 'Update Product' : 'Add Product'}
                 </button>
               </div>
             </form>

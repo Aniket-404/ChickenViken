@@ -10,11 +10,11 @@ import { toast } from 'react-toastify';
 // Styles
 const formStyles = {
   label: "block text-sm font-medium text-gray-700 mb-1",
-  input: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500",
-  error: "text-red-600 text-sm mt-1",
+  input: "w-full px-3 py-2 border border-gray-300 rounded-standard focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary",
+  error: "text-primary-dark text-sm mt-1",
   button: {
-    primary: "w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors",
-    secondary: "w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+    primary: "w-full bg-primary text-white py-2 px-4 rounded-standard hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors",
+    secondary: "w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-standard hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
   }
 };
 

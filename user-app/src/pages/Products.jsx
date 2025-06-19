@@ -44,11 +44,10 @@ const Products = () => {
       quantity: 1
     });
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+        <div className="skeleton h-12 w-12 rounded-full animate-pulse"></div>
       </div>
     );
   }
@@ -56,7 +55,7 @@ const Products = () => {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
-        <div className="bg-red-50 text-red-600 p-4 rounded-md inline-block">
+        <div className="bg-red-50 text-primary-dark p-4 rounded-standard inline-block">
           {error}
         </div>
       </div>
@@ -66,14 +65,13 @@ const Products = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-center">Our Fresh Chicken Products</h1>
-      
-      {/* Category Filter */}
+        {/* Category Filter */}
       <div className="flex flex-wrap justify-center gap-4 mb-8">
         <button
           onClick={() => setSelectedCategory('all')}
-          className={`px-4 py-2 rounded-full ${
+          className={`px-4 py-2 rounded-standard ${
             selectedCategory === 'all'
-              ? 'bg-red-600 text-white'
+              ? 'bg-primary text-white'
               : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
           }`}
         >
@@ -83,9 +81,9 @@ const Products = () => {
           <button
             key={category}
             onClick={() => setSelectedCategory(category)}
-            className={`px-4 py-2 rounded-full ${
+            className={`px-4 py-2 rounded-standard ${
               selectedCategory === category
-                ? 'bg-red-600 text-white'
+                ? 'bg-primary text-white'
                 : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
             }`}
           >

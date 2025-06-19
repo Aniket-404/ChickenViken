@@ -93,7 +93,7 @@ const Settings = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="skeleton h-12 w-12 rounded-full"></div>
       </div>
     );
   }
@@ -103,26 +103,26 @@ const Settings = () => {
       <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
       
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-md">
+        <div className="bg-primary-light text-primary-dark p-4 rounded-standard">
           {error}
         </div>
       )}
       
       {success && (
-        <div className="bg-green-50 text-green-600 p-4 rounded-md">
+        <div className="bg-green-50 text-green-600 p-4 rounded-standard">
           {success}
         </div>
       )}
       
       <form onSubmit={handleSubmit}>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="card overflow-hidden">
           {/* Store Information */}
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">Store Information</h2>
           </div>
           <div className="px-6 py-4 space-y-4">
             <div>
-              <label htmlFor="storeName" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="storeName" className="form-label">
                 Store Name
               </label>
               <input
@@ -131,12 +131,12 @@ const Settings = () => {
                 name="storeName"
                 value={settings.storeName}
                 onChange={handleInputChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="form-input"
               />
             </div>
             
             <div>
-              <label htmlFor="storeEmail" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="storeEmail" className="form-label">
                 Store Email
               </label>
               <input
@@ -145,12 +145,12 @@ const Settings = () => {
                 name="storeEmail"
                 value={settings.storeEmail}
                 onChange={handleInputChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="form-input"
               />
             </div>
             
             <div>
-              <label htmlFor="storePhone" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="storePhone" className="form-label">
                 Store Phone
               </label>
               <input
@@ -159,12 +159,12 @@ const Settings = () => {
                 name="storePhone"
                 value={settings.storePhone}
                 onChange={handleInputChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="form-input"
               />
             </div>
             
             <div>
-              <label htmlFor="storeAddress" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="storeAddress" className="form-label">
                 Store Address
               </label>
               <textarea
@@ -173,7 +173,7 @@ const Settings = () => {
                 rows="3"
                 value={settings.storeAddress}
                 onChange={handleInputChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="form-input"
               ></textarea>
             </div>
           </div>
@@ -184,7 +184,7 @@ const Settings = () => {
           </div>
           <div className="px-6 py-4 space-y-4">
             <div>
-              <label htmlFor="taxRate" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="taxRate" className="form-label">
                 Tax Rate (%)
               </label>
               <input
@@ -193,7 +193,7 @@ const Settings = () => {
                 name="taxRate"
                 value={settings.taxRate}
                 onChange={handleInputChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="form-input"
                 step="0.01"
                 min="0"
                 max="100"
@@ -278,7 +278,7 @@ const Settings = () => {
                 name="maintenanceMode"
                 checked={settings.maintenanceMode}
                 onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
               />
               <label htmlFor="maintenanceMode" className="ml-2 block text-sm text-gray-900">
                 Enable Maintenance Mode
@@ -294,10 +294,10 @@ const Settings = () => {
             <button
               type="submit"
               disabled={saving}
-              className={`px-4 py-2 rounded-md text-white ${
+              className={`admin-btn-primary ${
                 saving
-                  ? 'bg-blue-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                  ? 'opacity-70 cursor-not-allowed'
+                  : ''
               }`}
             >
               {saving ? 'Saving...' : 'Save Settings'}

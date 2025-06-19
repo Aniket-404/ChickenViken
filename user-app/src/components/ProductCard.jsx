@@ -23,8 +23,7 @@ const ProductCard = ({ product, onAddToCart }) => {
     setTimeout(() => setIsAnimating(false), 200);
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden transition-transform duration-200 hover:shadow-lg">
+  return (    <div className="card">
       <div className="relative aspect-square">
         <img
           src={product.imageUrl}
@@ -43,10 +42,8 @@ const ProductCard = ({ product, onAddToCart }) => {
           <span className="text-lg font-bold text-gray-900">{formatCurrency(product.price)}</span>
           <button
             onClick={handleAddToCart}
-            className={`px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 
-              transform transition-all duration-200 active:scale-95
-              ${isAnimating ? 'scale-90' : 'scale-100'}
-              hover:shadow-md`}
+            className={`btn-primary transform transition-all duration-200 active:scale-95
+              ${isAnimating ? 'scale-90' : 'scale-100'}`}
             disabled={isAnimating}
           >
             {isAnimating ? '✓' : 'Add to Cart'}

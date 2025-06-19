@@ -126,64 +126,64 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="skeleton h-12 w-12 rounded-full"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-6 bg-gray-50 dark:bg-gray-900">
+    <div className="space-y-6 p-6 bg-gray-50">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Revenue (Today)</h3>
-          <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(stats.todayRevenue || 0)}</p>
+        <div className="stat-card">
+          <h3 className="text-gray-500 text-sm font-medium">Revenue (Today)</h3>
+          <p className="text-2xl font-semibold text-gray-900">{formatCurrency(stats.todayRevenue || 0)}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Total Orders</h3>
-          <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{stats.totalOrders}</p>
+        <div className="stat-card">
+          <h3 className="text-gray-500 text-sm font-medium">Total Orders</h3>
+          <p className="text-2xl font-semibold text-gray-900">{stats.totalOrders}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Products</h3>
-          <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{stats.totalProducts}</p>
+        <div className="stat-card">
+          <h3 className="text-gray-500 text-sm font-medium">Products</h3>
+          <p className="text-2xl font-semibold text-gray-900">{stats.totalProducts}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">Users</h3>
-          <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{stats.totalUsers}</p>
+        <div className="stat-card">
+          <h3 className="text-gray-500 text-sm font-medium">Users</h3>
+          <p className="text-2xl font-semibold text-gray-900">{stats.totalUsers}</p>
         </div>
       </div>
       
       {/* Recent Orders Table - Full Width */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Recent Orders</h2>
+      <div className="card p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Orders</h2>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <table className="admin-table">
             <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Order ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Status</th>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Status</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+            <tbody>
               {stats.recentOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                <tr key={order.id}>
+                  <td>
                     {order.id.slice(0, 8)}...
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td>
                     {order.customerName || order.address?.name || 'N/A'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <td>
                     {formatCurrency(order.total || order.finalAmount || order.totalAmount || 0)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      order.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                      order.status === 'processing' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                      order.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                      'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                  <td>
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-standard ${
+                      order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                      order.status === 'cancelled' ? 'bg-primary-light text-primary-dark' :
+                      'bg-gray-100 text-gray-800'
                     }`}>
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </span>

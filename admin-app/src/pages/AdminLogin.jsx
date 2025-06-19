@@ -99,7 +99,7 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-lg shadow-md">        <div>
+      <div className="max-w-md w-full space-y-8 card p-8">        <div>
           <h2 className="text-center text-3xl font-extrabold text-gray-900">
             {isSignup ? 'Create Admin Account' : 'Admin Login'}
           </h2>
@@ -123,7 +123,7 @@ const AdminLogin = () => {
         </div>
         
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-md">
+          <div className="bg-primary-light text-primary-dark p-4 rounded-standard">
             {error}
           </div>
         )}
@@ -132,31 +132,31 @@ const AdminLogin = () => {
           <div className="rounded-md space-y-4">
             {isSignup && (
               <div>
-                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="displayName" className="form-label">
                   Display Name
                 </label>
                 <input
                   id="displayName"
                   type="text"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                  className="form-input"
                   {...register('displayName', { 
                     required: 'Display name is required'
                   })}
                 />
                 {errors.displayName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.displayName.message}</p>
+                  <p className="form-error">{errors.displayName.message}</p>
                 )}
               </div>
             )}
             
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="form-label">
                 Email
               </label>
               <input
                 id="email"
                 type="email"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                className="form-input"
                 {...register('email', { 
                   required: 'Email is required',
                   pattern: {
@@ -166,18 +166,18 @@ const AdminLogin = () => {
                 })}
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                <p className="form-error">{errors.email.message}</p>
               )}
             </div>
             
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="form-label">
                 Password
               </label>
               <input
                 id="password"
                 type="password"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                className="form-input"
                 {...register('password', { 
                   required: 'Password is required',
                   minLength: {
@@ -187,7 +187,7 @@ const AdminLogin = () => {
                 })}
               />
               {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                <p className="form-error">{errors.password.message}</p>
               )}
             </div>
           </div>
@@ -196,24 +196,29 @@ const AdminLogin = () => {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                loading 
-                  ? 'bg-blue-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+              className={`admin-btn-primary w-full ${
+                loading ? 'opacity-70 cursor-not-allowed' : ''
               }`}
             >
-              {loading ? 'Processing...' : (isSignup ? 'Sign up' : 'Sign in')}
+              {loading 
+                ? (isSignup ? 'Creating Account...' : 'Signing In...') 
+                : (isSignup ? 'Create Account' : 'Sign In')}
             </button>
             
-            <button
-              type="button"
-              onClick={() => setIsSignup(!isSignup)}
-              className="text-sm text-blue-600 hover:text-blue-500"
-            >
-              {isSignup 
-                ? 'Already have an account? Sign in' 
-                : 'Need an account? Sign up'}
-            </button>
+            <div className="text-center">
+              <button 
+                type="button" 
+                className="text-sm text-primary hover:text-primary-dark"
+                onClick={() => {
+                  setIsSignup(!isSignup);
+                  setError('');
+                }}
+              >
+                {isSignup 
+                  ? 'Already have an account? Sign in' 
+                  : 'Need an account? Sign up'}
+              </button>
+            </div>
           </div>
         </form>
         
