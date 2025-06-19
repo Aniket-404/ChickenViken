@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext/index.js';
 
@@ -66,25 +66,46 @@ const Settings = () => {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      
-      // Validate tax rate
+        // Validate tax rate
       const taxRate = parseFloat(settings.taxRate);
       if (isNaN(taxRate) || taxRate < 0 || taxRate > 100) {
         throw new Error('Tax rate must be a number between 0 and 100');
       }
       
-      // Update settings in Firestore
-      await updateDoc(doc(db, 'settings', 'appSettings'), {
+      // Check if settings document exists
+      const settingsDocRef = doc(db, 'settings', 'appSettings');
+      const settingsDoc = await getDoc(settingsDocRef);
+      
+      const settingsData = {
         ...settings,
         taxRate: taxRate.toString(),
         updatedAt: serverTimestamp(),
         updatedBy: currentUser?.email || 'unknown'
-      });
+      };
       
-      setSuccess('Settings saved successfully');
-    } catch (err) {
+      if (settingsDoc.exists()) {
+        // Update existing document
+        await updateDoc(settingsDocRef, settingsData);
+      } else {
+        // Create new document
+        await setDoc(settingsDocRef, {
+          ...settingsData,
+          createdAt: serverTimestamp(),
+          createdBy: currentUser?.email || 'unknown'
+        });
+      }
+      
+      setSuccess('Settings saved successfully');    } catch (err) {
       console.error('Error saving settings:', err);
-      setError(err.message || 'Failed to save settings. Please try again.');
+      
+      // Provide a more user-friendly error message
+      if (err.code === 'permission-denied') {
+        setError('You do not have permission to save settings. Please contact an administrator.');
+      } else if (err.message.includes('No document to update')) {
+        setError('Settings document does not exist. Please try again or contact an administrator.');
+      } else {
+        setError(err.message || 'Failed to save settings. Please try again.');
+      }
     } finally {
       setSaving(false);
     }
