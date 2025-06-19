@@ -42,13 +42,17 @@ const AddAdminModal = ({ isOpen, onClose, onAdd }) => {
         formData.password
       );
 
-      // Create the admin document in Firestore
+      // Create the admin document in Firestore      // Get creator's data to check if they are superadmin
+      const creatorDoc = await getDoc(doc(db, 'admins', currentUser.uid));
+      const creatorData = creatorDoc.data();
+      
       const adminData = {
         email: formData.email,
         displayName: formData.displayName,
-        permissions: formData.permissions,
+        // If creator is superadmin, use selected permissions, otherwise clear them
+        permissions: creatorData.role === 'superadmin' ? formData.permissions : [],
         isActive: true,
-        role: 'admin',
+        role: 'admin', // New users can only be regular admins
         createdAt: new Date(),
         lastLogin: null
       };
@@ -107,23 +111,32 @@ const AddAdminModal = ({ isOpen, onClose, onAdd }) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Permissions</label>
-              <div className="mt-2 space-y-2">
-                {['products', 'orders', 'users', 'settings'].map(permission => (
-                  <label key={permission} className="inline-flex items-center mr-4">
-                    <input
-                      type="checkbox"
-                      className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      checked={formData.permissions.includes(permission)}
-                      onChange={(e) => {
-                        const newPermissions = e.target.checked
-                          ? [...formData.permissions, permission]
-                          : formData.permissions.filter(p => p !== permission);
-                        setFormData({ ...formData, permissions: newPermissions });
-                      }}
-                    />
-                    <span className="ml-2 text-sm text-gray-700 capitalize">{permission}</span>
-                  </label>
-                ))}
+              <div className="mt-2 space-y-2">                {['products', 'orders', 'users', 'settings'].map(permission => {
+                  // Check if current user is superadmin
+                  const isSuperAdmin = currentUser?.uid === 'RXEQ16eMsfW5WrEnxReqVwI3JmE2';
+                  
+                  // Only show checkboxes if user is superadmin
+                  if (!isSuperAdmin) {
+                    return null;
+                  }
+
+                  return (
+                    <label key={permission} className="inline-flex items-center mr-4">
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        checked={formData.permissions.includes(permission)}
+                        onChange={(e) => {
+                          const newPermissions = e.target.checked
+                            ? [...formData.permissions, permission]
+                            : formData.permissions.filter(p => p !== permission);
+                          setFormData({ ...formData, permissions: newPermissions });
+                        }}
+                      />
+                      <span className="ml-2 text-sm text-gray-700 capitalize">{permission}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
             <div className="flex justify-end space-x-3 mt-5">
@@ -160,8 +173,7 @@ const Users = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   const [hasUsersPermission, setHasUsersPermission] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  // Function to check if current user has users permission, memoized with useCallback
+  const [searchTerm, setSearchTerm] = useState('');  // Function to check if current user has users permission, memoized with useCallback
   const checkUsersPermission = useCallback(async () => {
     if (!currentUser) return false;
     
@@ -170,6 +182,9 @@ const Users = () => {
       if (!userDoc.exists()) return false;
       
       const userData = userDoc.data();
+      // Superadmins have all permissions automatically
+      if (userData.role === 'superadmin') return true;
+      
       return userData.permissions?.includes('users') || false;
     } catch (err) {
       console.error('Error checking permissions:', err);
