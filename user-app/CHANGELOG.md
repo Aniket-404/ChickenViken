@@ -1,6 +1,18 @@
 # ChickenViken User App Changelog
 
 ## June 19, 2025
+- Fixed address editing functionality in Profile page:
+  - Fixed controlled/uncontrolled input warning
+  - Fixed issue with Save Changes button not working
+  - Added better handling for zipCode/pincode field variations
+  - Improved form handling with better validation and error checking
+  - Added debug logging for easier troubleshooting
+- Completed address editing functionality in Profile page
+- Enhanced Profile page UI for address cards with improved styling
+- Fixed UI to properly display edit/add modes for addresses
+- Improved UX with clearer buttons and visual feedback
+
+## June 19, 2025 (Earlier Today)
 - Removed test functionality from Profile page
 - Consolidated documentation into README.md
 - Updated Firestore security rules for production

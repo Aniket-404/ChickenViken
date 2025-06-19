@@ -17,13 +17,14 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: ''  });  const [addingAddress, setAddingAddress] = useState(false);
-  const [newAddress, setNewAddress] = useState({
+  const [editingAddressIndex, setEditingAddressIndex] = useState(null);  const [newAddress, setNewAddress] = useState({
     name: '',
     phone: '',
     street: '',
     city: '',
     state: '',
     zipCode: '',
+    pincode: '', // Adding this to handle both zipCode and pincode
     type: 'home'
   });
 
@@ -128,14 +129,18 @@ const Profile = () => {
       [name]: value
     }));
   };
-
   const handleAddressChange = (e) => {
     const { name, value } = e.target;
-    setNewAddress(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };  const handleSaveProfile = async () => {
+    console.log(`Address field changed: ${name} = ${value}`);
+    setNewAddress(prev => {
+      const updated = {
+        ...prev,
+        [name]: value
+      };
+      console.log('New address state:', updated);
+      return updated;
+    });
+  };const handleSaveProfile = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -212,6 +217,92 @@ const Profile = () => {
     } catch (err) {
       console.error('Error adding address:', err);
       setError('Failed to add address. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleEditAddress = (index) => {
+    // Get the address to edit
+    const addressToEdit = userData.addresses[index];
+    
+    // Ensure all fields are defined with fallbacks to empty strings
+    setNewAddress({
+      name: addressToEdit.name || '',
+      phone: addressToEdit.phone || '',
+      street: addressToEdit.street || '',
+      city: addressToEdit.city || '',
+      state: addressToEdit.state || '',
+      zipCode: addressToEdit.zipCode || addressToEdit.pincode || '',
+      pincode: addressToEdit.pincode || addressToEdit.zipCode || '',
+      type: addressToEdit.type || 'home'
+    });
+    
+    setEditingAddressIndex(index);
+    setAddingAddress(true);
+    
+    // Log for debugging
+    console.log('Editing address:', addressToEdit);
+  };
+  const handleUpdateAddress = async () => {
+    try {
+      console.log('handleUpdateAddress called', { newAddress, editingAddressIndex });
+      setLoading(true);
+      setError(null);
+
+      // Validate address
+      if (!newAddress.name || !newAddress.phone || !newAddress.street || !newAddress.city || !newAddress.state || !newAddress.zipCode) {
+        setError('Please fill in all address fields');
+        setLoading(false);
+        return;
+      }
+
+      // Create a copy of the addresses array
+      const updatedAddresses = [...userData.addresses];
+      
+      // Update the address at the specified index
+      updatedAddresses[editingAddressIndex] = {
+        ...newAddress,
+        // Ensure both zipCode and pincode are saved to handle different field names
+        zipCode: newAddress.zipCode || newAddress.pincode,
+        pincode: newAddress.pincode || newAddress.zipCode
+      };
+      
+      console.log('Updated addresses:', updatedAddresses);
+      
+      // Update local state regardless of Firestore access
+      setUserData(prev => ({
+        ...prev,
+        addresses: updatedAddresses
+      }));
+
+      try {
+        // Try to update Firestore
+        const { createOrUpdateUser } = await import('../services/users');
+        await createOrUpdateUser(currentUser.uid, {
+          addresses: updatedAddresses,
+          name: userData.name,
+          phone: userData.phone,
+          email: userData.email || currentUser.email
+        });
+      } catch (firestoreErr) {
+        console.error('Error updating Firestore addresses:', firestoreErr);
+        setError('Address updated locally only. Changes will not persist between sessions.');
+      }      // Reset the form
+      setAddingAddress(false);
+      setEditingAddressIndex(null);
+      setNewAddress({
+        name: '',
+        phone: '',
+        street: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        pincode: '',
+        type: 'home'
+      });
+    } catch (err) {
+      console.error('Error updating address:', err);
+      setError('Failed to update address. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -391,15 +482,15 @@ const Profile = () => {
             )}
           </div>
           
-          {addingAddress ? (            <div className="space-y-4 border p-4 rounded-md">
-              <h3 className="font-medium">Add New Address</h3>
+          {addingAddress ? (
+            <div className="space-y-4 border p-4 rounded-md">
+              <h3 className="font-medium">{editingAddressIndex !== null ? 'Edit Address' : 'Add New Address'}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 mb-2">Full Name</label>
                   <input 
-                    type="text"
-                    name="name"
-                    value={newAddress.name}
+                    type="text"                    name="name"
+                    value={newAddress.name || ''}
                     onChange={handleAddressChange}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                     placeholder="Enter full name"
@@ -408,9 +499,8 @@ const Profile = () => {
                 <div>
                   <label className="block text-gray-700 mb-2">Phone Number</label>
                   <input 
-                    type="text"
-                    name="phone"
-                    value={newAddress.phone}
+                    type="text"                    name="phone"
+                    value={newAddress.phone || ''}
                     onChange={handleAddressChange}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                     placeholder="Enter phone number"
@@ -419,9 +509,8 @@ const Profile = () => {
                 <div>
                   <label className="block text-gray-700 mb-2">Street Address</label>
                   <input 
-                    type="text"
-                    name="street"
-                    value={newAddress.street}
+                    type="text"                    name="street"
+                    value={newAddress.street || ''}
                     onChange={handleAddressChange}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
@@ -429,9 +518,8 @@ const Profile = () => {
                 <div>
                   <label className="block text-gray-700 mb-2">City</label>
                   <input 
-                    type="text"
-                    name="city"
-                    value={newAddress.city}
+                    type="text"                    name="city"
+                    value={newAddress.city || ''}
                     onChange={handleAddressChange}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
@@ -439,28 +527,25 @@ const Profile = () => {
                 <div>
                   <label className="block text-gray-700 mb-2">State</label>
                   <input 
-                    type="text"
-                    name="state"
-                    value={newAddress.state}
+                    type="text"                    name="state"
+                    value={newAddress.state || ''}
                     onChange={handleAddressChange}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-gray-700 mb-2">Zip Code</label>
+                <div>                  <label className="block text-gray-700 mb-2">Zip Code</label>
                   <input 
                     type="text"
                     name="zipCode"
-                    value={newAddress.zipCode}
+                    value={newAddress.zipCode || ''}
                     onChange={handleAddressChange}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
                   <label className="block text-gray-700 mb-2">Address Type</label>
-                  <select
-                    name="type"
-                    value={newAddress.type}
+                  <select                    name="type"
+                    value={newAddress.type || 'home'}
                     onChange={handleAddressChange}
                     className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
@@ -472,15 +557,37 @@ const Profile = () => {
               </div>
               
               <div className="flex space-x-4 pt-4">
-                <button 
-                  onClick={handleAddAddress}
-                  disabled={loading}
-                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
-                >
-                  {loading ? 'Adding...' : 'Add Address'}
-                </button>
-                <button 
-                  onClick={() => setAddingAddress(false)}
+                {editingAddressIndex !== null ? (
+                  <button 
+                    onClick={handleUpdateAddress}
+                    disabled={loading}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {loading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleAddAddress}
+                    disabled={loading}
+                    className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {loading ? 'Adding...' : 'Add Address'}
+                  </button>
+                )}
+                <button                  onClick={() => {
+                    setAddingAddress(false);
+                    setEditingAddressIndex(null);
+                    setNewAddress({
+                      name: '',
+                      phone: '',
+                      street: '',
+                      city: '',
+                      state: '',
+                      zipCode: '',
+                      pincode: '',
+                      type: 'home'
+                    });
+                  }}
                   className="border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-100 transition-colors"
                 >
                   Cancel
@@ -491,24 +598,37 @@ const Profile = () => {
             <div>
               {userData.addresses && userData.addresses.length > 0 ? (
                 <div className="space-y-4">
-                  {userData.addresses.map((address, index) => (
-                    <div key={index} className="border p-4 rounded-md relative">
-                      <div className="absolute top-4 right-4">
+                  {userData.addresses.map((address, index) => (                    <div key={index} className="border p-4 rounded-md relative hover:shadow-md transition-all">
+                      <div className="absolute top-4 right-4 flex space-x-2">
+                        <button 
+                          onClick={() => handleEditAddress(index)}
+                          className="text-blue-500 hover:text-blue-700 transition-colors"
+                          aria-label="Edit address"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                          </svg>
+                        </button>
                         <button 
                           onClick={() => handleRemoveAddress(index)}
-                          className="text-gray-500 hover:text-red-600"
+                          className="text-gray-500 hover:text-red-600 transition-colors"
+                          aria-label="Delete address"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
                         </button>
-                      </div>                      <div className="capitalize mb-2 font-medium">
+                      </div>
+                      
+                      <div className="capitalize mb-2 font-medium text-red-600">
                         {address.type} Address
                       </div>
-                      {address.name && <p className="font-semibold">{address.name}</p>}
-                      {address.phone && <p className="mb-1">{address.phone}</p>}
-                      <p>{address.street}</p>
-                      <p>{address.city}, {address.state} {address.zipCode || address.pincode}</p>
+                      <div className="pt-2">
+                        {address.name && <p className="font-semibold">{address.name}</p>}
+                        {address.phone && <p className="mb-1 text-gray-700">{address.phone}</p>}
+                        <p className="text-gray-800">{address.street}</p>
+                        <p className="text-gray-800">{address.city}, {address.state} {address.zipCode || address.pincode}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
