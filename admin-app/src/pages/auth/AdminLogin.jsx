@@ -53,7 +53,7 @@ const AdminLogin = () => {  const { login } = useAuth();
             Admin Login
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to access the admin dashboard
+            Sign in to access the admin panel
           </p>
         </div>
         

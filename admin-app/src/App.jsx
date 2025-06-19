@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext/index.js';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import DashboardLayout from './components/layout/DashboardLayout';
+import AdminLayout from './components/layout/AdminLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -9,8 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 // Auth pages
 import AdminLogin from './pages/auth/AdminLogin';
 
-// Dashboard pages
-import Dashboard from './pages/dashboard/Dashboard';
+// App pages
 import Orders from './pages/orders/Orders';
 import Products from './pages/products/Products';
 import Inventory from './pages/inventory/Inventory';
@@ -23,12 +22,10 @@ function App() {
       <AuthProvider>
         <Routes>
           {/* Public routes */}
-          <Route path="/login" element={<AdminLogin />} />
-          
-          {/* Protected routes - all need admin authentication */}
+          <Route path="/login" element={<AdminLogin />} />          {/* Protected routes - all need admin authentication */}
           <Route element={<ProtectedRoute />}>
-            <Route element={<DashboardLayout />}>
-              <Route path="/" element={<Dashboard />} />
+            <Route element={<AdminLayout />}>
+              <Route path="/" element={<Orders />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/products" element={<Products />} />
               <Route path="/inventory" element={<Inventory />} />
