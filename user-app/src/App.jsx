@@ -5,7 +5,6 @@ import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext/provider';
 import { useAuth } from './hooks/useAuth';
 import Navbar from './components/Navbar';
-import Footer from './components/Footer';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Products from './pages/Products';
@@ -53,9 +52,7 @@ function App() {
                     } 
                   />
                   <Route path="*" element={<Navigate to="/" />} />
-                </Routes>
-              </main>
-              <Footer />
+                </Routes>              </main>
             </div>
             <ToastContainer
               position="bottom-right"
