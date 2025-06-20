@@ -8,9 +8,9 @@ import {
   doc, 
   serverTimestamp
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../firebase/config';
+import { db } from '../../firebase/config';
 import { toast } from 'react-toastify';
+import { uploadImage, deleteImage, getPublicIdFromUrl } from '../../services/cloudinary';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -86,15 +86,24 @@ const Products = () => {
     setImagePreview(product.imageUrl || '');
     setShowAddModal(true);
   };
-
   // Handle product deletion
-  const handleDeleteProduct = async (productId) => {
+  const handleDeleteProduct = async (productId, imageUrl) => {
     if (!window.confirm('Are you sure you want to delete this product?')) {
       return;
     }
 
     try {
+      // Delete the product from Firestore
       await deleteDoc(doc(db, 'products', productId));
+      
+      // Delete the image from Cloudinary if it exists
+      if (imageUrl) {
+        const publicId = getPublicIdFromUrl(imageUrl);
+        if (publicId) {
+          await deleteImage(publicId);
+        }
+      }
+      
       setProducts(prev => prev.filter(p => p.id !== productId));
       toast.success('Product deleted successfully');
     } catch (err) {
@@ -102,7 +111,6 @@ const Products = () => {
       toast.error('Failed to delete product');
     }
   };
-
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -110,11 +118,9 @@ const Products = () => {
     try {
       let imageUrl = formData.imageUrl;
       
-      // If there's a new image file, upload it to Firebase Storage
+      // If there's a new image file, upload it to Cloudinary
       if (imageFile) {
-        const storageRef = ref(storage, `products/${Date.now()}_${imageFile.name}`);
-        const snapshot = await uploadBytes(storageRef, imageFile);
-        imageUrl = await getDownloadURL(snapshot.ref);
+        imageUrl = await uploadImage(imageFile);
       }
 
       const productData = {
@@ -240,8 +246,7 @@ const Products = () => {
                         className="table-action-btn table-action-btn-primary"
                       >
                         Edit
-                      </button>
-                      <button
+                      </button>                      <button
                         onClick={() => handleDeleteProduct(product.id, product.imageUrl)}
                         className="table-action-btn table-action-btn-danger"
                       >
