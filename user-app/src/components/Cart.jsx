@@ -1,6 +1,7 @@
 import { useCart } from '../contexts/CartContext/hooks';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../utils/currency';
+import { useAuth } from '../hooks/useAuth';
 
 const CartItem = ({ item }) => {
   const { updateQuantity, removeFromCart } = useCart();
@@ -50,6 +51,7 @@ const CartItem = ({ item }) => {
 
 const Cart = () => {
   const { cartItems, total, clearCart } = useCart();
+  const { currentUser } = useAuth();
   
   if (cartItems.length === 0) {
     return (
@@ -74,6 +76,12 @@ const Cart = () => {
         </button>
       </div>
       
+      {!currentUser && (
+        <div className="bg-yellow-50 text-yellow-800 p-4 rounded-lg mb-4">
+          <p className="font-medium">Please <Link to="/login" className="text-primary-dark hover:underline">log in</Link> to complete your purchase.</p>
+        </div>
+      )}
+      
       <div className="card">
         <div className="p-4 bg-gray-50 border-b font-medium flex justify-between">
           <span>Product</span>
@@ -91,9 +99,15 @@ const Cart = () => {
       </div>
       
       <div className="mt-8 flex justify-end">
-        <Link to="/checkout" className="btn-primary">
-          Proceed to Checkout
-        </Link>
+        {currentUser ? (
+          <Link to="/checkout" className="btn-primary">
+            Proceed to Checkout
+          </Link>
+        ) : (
+          <Link to="/login" className="btn-primary">
+            Login to Checkout
+          </Link>
+        )}
       </div>
     </div>
   );

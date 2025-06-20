@@ -18,6 +18,20 @@ export function CartProvider({ children }) {
     }
     return 0;
   });
+  // Check for pending cart items on mount
+  useEffect(() => {
+    const pendingCartItem = localStorage.getItem('pendingCartItem');
+    if (pendingCartItem) {
+      try {
+        // Validate that the item is properly formatted
+        JSON.parse(pendingCartItem);
+        // We'll handle adding this item in the Login/Signup components
+      } catch (error) {
+        console.error('Error parsing pending cart item:', error);
+        localStorage.removeItem('pendingCartItem');
+      }
+    }
+  }, []);
 
   // Update localStorage and total whenever cart changes
   useEffect(() => {
@@ -38,7 +52,7 @@ export function CartProvider({ children }) {
       console.error('Error saving cart:', error);
     }
   }, [cartItems]);
-  // Add item to cart
+    // Add item to cart
   const addToCart = (item) => {
     if (!item || !item.id || !item.price) {
       console.error('Invalid item data:', item);

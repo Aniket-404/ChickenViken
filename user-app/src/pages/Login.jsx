@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useCart } from '../contexts/CartContext/hooks';
 import { useForm } from 'react-hook-form';
+import { toast } from 'react-toastify';
 
 const Login = () => {
   const { login } = useAuth();
+  const { addToCart } = useCart();
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
   const { register, handleSubmit, formState: { errors } } = useForm();
-    const onSubmit = async (data) => {
+  const onSubmit = async (data) => {
     if (loading) return; // Prevent multiple submissions
     
     try {
@@ -21,6 +24,19 @@ const Login = () => {
       // Set localStorage item to indicate successful login
       localStorage.setItem('user', JSON.stringify({ email: data.email }));
       
+      // Check if there's a pending cart item and add it
+      const pendingCartItem = localStorage.getItem('pendingCartItem');
+      if (pendingCartItem) {
+        try {
+          const item = JSON.parse(pendingCartItem);
+          addToCart(item);
+          localStorage.removeItem('pendingCartItem');
+          toast.success('Added item to your cart!');
+        } catch (err) {
+          console.error('Error adding pending item to cart:', err);
+        }
+      }
+      
       navigate('/');
     } catch (err) {
       setError('Failed to sign in. Please check your credentials.');
@@ -28,7 +44,7 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
-  };    return (
+  };return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div 
         className="max-w-md w-full space-y-8 card p-8"

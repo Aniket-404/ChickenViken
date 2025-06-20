@@ -1,12 +1,37 @@
 import { useState } from 'react';
 import { formatCurrency } from '../utils/currency';
 import { toast } from 'react-toastify';
+import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 const ProductCard = ({ product, onAddToCart }) => {
   const [isAnimating, setIsAnimating] = useState(false);
-
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const handleAddToCart = () => {
     setIsAnimating(true);
+    
+    // Check if user is authenticated
+    if (!currentUser) {
+      // Save the product to local storage for adding after login
+      localStorage.setItem('pendingCartItem', JSON.stringify({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        imageUrl: product.imageUrl,
+        quantity: 1
+      }));
+      
+      // Redirect to login page if not authenticated
+      toast.info('Please login to add items to your cart', {
+        position: "bottom-right",
+        autoClose: 3000,
+      });
+      setTimeout(() => navigate('/login'), 1000);
+      setTimeout(() => setIsAnimating(false), 200);
+      return;
+    }
+    
     onAddToCart(product);
     
     toast.success('Added to cart!', {

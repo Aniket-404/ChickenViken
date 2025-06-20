@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { fetchProducts, fetchCategories } from '../services/products';
 import ProductCard from '../components/ProductCard';
 import { useCart } from '../contexts/CartContext/hooks';
+import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -10,6 +13,8 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { addToCart } = useCart();
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadData = async () => {
@@ -33,9 +38,24 @@ const Products = () => {
     };
 
     loadData();
-  }, [selectedCategory]);
-
-  const handleAddToCart = (product) => {
+  }, [selectedCategory]);  const handleAddToCart = (product) => {
+    // Check if user is authenticated
+    if (!currentUser) {
+      // Save the product to local storage for adding after login
+      localStorage.setItem('pendingCartItem', JSON.stringify({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        imageUrl: product.imageUrl,
+        quantity: 1
+      }));
+      
+      // Redirect to login page if not authenticated
+      toast.info('Please login to add items to your cart');
+      navigate('/login');
+      return;
+    }
+    
     addToCart({
       id: product.id,
       name: product.name,
