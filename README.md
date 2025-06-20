@@ -9,10 +9,14 @@ A full-stack web application for ordering raw chicken meat products, inspired by
 ├── /admin-app/         # Admin dashboard (React + Vite)
 ├── /user-app/          # Customer-facing app (React + Vite)
 ├── /server/            # Express backend (optional)
-├── /scripts/          # Setup and utility scripts
+├── /scripts/           # Setup and utility scripts
+├── /functions/         # Firebase Cloud Functions
 ├── .gitignore
 ├── README.md
-└── .env.sample        # Sample environment variables
+├── DEPLOYMENT_GUIDE.md # Detailed deployment instructions
+├── RENDER_WEB_SERVICE_GUIDE.md # Render-specific deployment guide
+├── render.yaml         # Render deployment configuration
+└── .env.sample         # Sample environment variables
 ```
 
 ## Tech Stack
@@ -30,7 +34,10 @@ A full-stack web application for ordering raw chicken meat products, inspired by
 - Authentication: Login/Signup using Firebase Auth
 - User Profile Management: Personal info, addresses (CRUD)
 - Product Browsing & Ordering
-- Cart Management
+- Cart Management with persistent storage
+  - Items stored in localStorage
+  - Pending items for non-logged-in users
+  - Quantity management and price calculation
 - Payment Processing
   - Phase 1: Mock payment UI inspired by BharatPe (for testing and design validation)
   - Phase 2 (Final Iteration): Integrate real payment gateway (e.g., Razorpay, Stripe, Paytm)
@@ -231,21 +238,55 @@ The project uses two sets of security rules:
 
 ## Production Deployment
 
+### Using Render
+
+ChickenViken is configured for deployment on Render.com using the following setup:
+
+1. **User App** (`chickenviken-user-app`)
+   - Type: Web Service (Static Site)
+   - Build Command: `cd user-app && npm install && npm run build`
+   - Publish Directory: `user-app/dist`
+
+2. **Admin App** (`chickenviken-admin-app`)
+   - Type: Web Service (Static Site)
+   - Build Command: `cd admin-app && npm install && npm run build`
+   - Publish Directory: `admin-app/dist`
+
+3. **Backend API** (`chickenviken-api`)
+   - Type: Web Service
+   - Build Command: `cd server && npm install`
+   - Start Command: `cd server && npm run start`
+
+### Manual Deployment
+
+If you're deploying manually to Render or another platform:
+
 1. **Build the applications**
    ```bash
    # Build user app
    cd user-app
-   npm run build
+   npm install && npm run build
 
    # Build admin app
    cd ../admin-app
-   npm run build
+   npm install && npm run build
    ```
 
-2. **Deploy to hosting**
-   - Follow your hosting provider's deployment instructions
-   - Set up environment variables in your hosting platform
-   - Deploy the built applications from the respective `dist` directories
+2. **Serve the built applications**
+   ```bash
+   # Serve user app
+   cd user-app
+   npx serve -s dist
+
+   # Serve admin app
+   cd ../admin-app
+   npx serve -s dist
+   ```
+
+For detailed deployment instructions, see:
+- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) - General deployment guide
+- [RENDER_WEB_SERVICE_GUIDE.md](./RENDER_WEB_SERVICE_GUIDE.md) - Render-specific instructions
+- [render.yaml](./render.yaml) - Render configuration file
 
 ## Troubleshooting
 
@@ -274,3 +315,80 @@ The project uses two sets of security rules:
 3. Commit your changes: `git commit -am 'Add NewFeature'`
 4. Push to the branch: `git push origin feature/NewFeature`
 5. Submit a pull request
+
+## Detailed Project Structure
+
+### User App (`/user-app`)
+- `/src/components` - Reusable UI components (Cart, Navbar, ProductCard, etc.)
+- `/src/contexts` - React Context providers (Auth, Cart)
+- `/src/firebase` - Firebase configuration and utilities
+- `/src/hooks` - Custom React hooks
+- `/src/pages` - Application pages (Products, Cart, Checkout, etc.)
+- `/src/services` - API and service integrations
+- `/src/utils` - Utility functions
+
+### Admin App (`/admin-app`)
+- `/src/components` - Dashboard components and UI elements
+- `/src/contexts` - Admin authentication context
+- `/src/firebase` - Admin Firebase configuration
+- `/src/hooks` - Custom admin hooks
+- `/src/pages` - Admin dashboard pages (Orders, Inventory, etc.)
+- `/src/services` - Admin services (Cloudinary, Orders)
+- `/src/utils` - Admin utility functions
+
+### Server (`/server`)
+- Simple Express backend for handling API requests
+- Integration with Firebase Admin SDK
+
+### Scripts (`/scripts`)
+- Admin user management scripts
+- Firebase emulator configuration
+- Seeding scripts for development data
+
+## Cart Implementation
+
+The cart system uses React Context API and localStorage for persistence:
+
+### Cart Provider (`/user-app/src/contexts/CartContext/provider.jsx`)
+- Manages cart state with React hooks
+- Persists cart items in localStorage
+- Handles:
+  - Adding items to cart
+  - Updating item quantities
+  - Removing items
+  - Calculating totals
+  - Preserving pending items for non-logged-in users
+
+### Cart Features
+- **Persistence**: Cart items are saved in localStorage to persist across sessions
+- **Guest Cart**: Non-logged-in users can add items, which are stored as pending items
+- **Quantity Management**: Increment/decrement item quantities, with automatic removal when quantity reaches zero
+- **Price Calculation**: Automatic total calculation based on item prices and quantities
+- **Error Handling**: Robust error handling for invalid items or localStorage issues
+
+## Project Updates (June 2025)
+
+Recent updates to the project:
+
+1. **Deployment Configuration**
+   - Updated render.yaml for proper deployment of static sites
+   - Added serve package to both apps for flexible deployment options
+   - Streamlined build and deployment commands
+
+2. **Documentation**
+   - Enhanced README with detailed project structure
+   - Added comprehensive deployment guides
+   - Created deployment checklists for consistent deployments
+   - Documented cart implementation
+
+3. **User Experience**
+   - Improved cart persistence mechanism
+   - Enhanced error handling for cart operations
+   - Added pending cart items for non-logged-in users
+
+4. **Project Structure**
+   - Organized components for better maintainability
+   - Separated contexts for cleaner state management
+   - Improved error boundaries throughout the application
+
+## Detailed Setup Instructions

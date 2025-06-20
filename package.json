@@ -14,6 +14,8 @@
     "build:all": "npm run build:user && npm run build:admin",
     "preview:user": "cd user-app && npm run preview",
     "preview:admin": "cd admin-app && npm run preview",
+    "serve:user": "cd user-app && npm run serve",
+    "serve:admin": "cd admin-app && npm run serve",
     "lint:user": "cd user-app && npm run lint",
     "lint:admin": "cd admin-app && npm run lint",
     "deploy:firebase": "npm run build:all && firebase deploy",

@@ -6,19 +6,18 @@
   "exports": {
     "./components/Sidebar": "./src/components/Sidebar.jsx",
     "./components/Dashboard": "./src/components/Dashboard.jsx"
-  },
-  "scripts": {
+  },  "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "serve": "serve -s dist",
     "deploy:rules": "npx firebase deploy --only firestore:rules",
     "check-admins": "node ../scripts/adminCheck.js",
     "create-admin": "node ../scripts/createAdminUser.js",
     "test-login": "node ../scripts/testAdminLogin.js",
     "fix-admin-login": "node ../scripts/fixAdminLogin.js"
-  },
-  "dependencies": {
+  },  "dependencies": {
     "@cloudinary/react": "^1.14.3",
     "@cloudinary/url-gen": "^1.21.0",
     "autoprefixer": "^10.4.17",
@@ -28,6 +27,7 @@
     "react-dom": "^19.1.0",
     "react-firebase-hooks": "^5.1.1",
     "react-hook-form": "^7.58.0",
+    "serve": "^14.2.1",
     "react-router-dom": "^7.6.2",
     "react-toastify": "^11.0.5",
     "recharts": "^2.15.3",
